@@ -68,7 +68,11 @@ export const PALETTES: Record<Theme, Palette> = {
 }
 
 export const ROUTE = { line: '#3e6ae1', casing: '#1d3a8f' }
-export const TRAFFIC = { moderate: '#f39c12', heavy: '#e5262f', severe: '#9b111e' }
+export const TRAFFIC = { free: '#2fb36d', moderate: '#f39c12', heavy: '#e5262f', severe: '#9b111e' }
+
+/** Road classes (Mapbox Traffic v1) where free-flowing traffic is drawn in green. */
+export const FREE_FLOW_CLASSES = ['motorway', 'motorway_link', 'trunk', 'trunk_link', 'primary', 'primary_link', 'secondary', 'tertiary']
+export const TRAFFIC_LAYERS = ['traffic-free', 'traffic'] as const
 
 /** Layers that draw the vector "drawing" of the map; hidden under satellite imagery. */
 const DRAWN_LAYERS = ['park', 'landcover', 'water', 'waterway', 'rail', 'path', 'road-casing', 'road-service', 'road-minor', 'road-mid', 'road-major', 'buildings']
@@ -239,28 +243,49 @@ export function buildStyle({ theme, satellite, trafficTiles }: StyleOptions): St
 }
 
 /**
- * Live traffic: thick congestion lines drawn on each side of the road
- * (features are per direction, so a positive offset puts each one on its own side).
- * Free-flowing traffic is not drawn, like in the car.
+ * Live traffic, drawn on each side of the road (features are per direction, so a
+ * positive offset puts each one on its own side):
+ * - free-flowing main roads as thin green lines, so the layer always reads as "on";
+ * - slow traffic as thick orange/red lines on every road, drawn on top.
  */
 function addTraffic(style: StyleSpecification, tiles: string) {
   style.sources.traffic = { type: 'vector', tiles: [tiles], minzoom: 6, maxzoom: 16, attribution: 'Traffic © Mapbox' }
-  const roadsIdx = style.layers.findIndex((l) => l.id === 'buildings')
-  style.layers.splice(roadsIdx, 0, {
-    id: 'traffic',
-    type: 'line',
-    source: 'traffic',
-    'source-layer': 'traffic',
-    minzoom: 10,
-    filter: ['match', ['get', 'congestion'], ['moderate', 'heavy', 'severe'], true, false],
-    layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
-    paint: {
-      'line-color': ['match', ['get', 'congestion'], 'moderate', TRAFFIC.moderate, 'heavy', TRAFFIC.heavy, TRAFFIC.severe],
-      'line-width': width([[10, 2], [13, 4], [15, 7], [17, 13], [19, 26], [20, 40]]),
-      'line-offset': width([[10, 1], [13, 2.5], [15, 5], [17, 10], [19, 22], [20, 34]]),
-      'line-opacity': 0.95,
+  const offset = width([[10, 1], [13, 2.5], [15, 5], [17, 10], [19, 22], [20, 34]])
+  const at = style.layers.findIndex((l) => l.id === 'buildings')
+  style.layers.splice(
+    at,
+    0,
+    {
+      id: 'traffic-free',
+      type: 'line',
+      source: 'traffic',
+      'source-layer': 'traffic',
+      minzoom: 10,
+      filter: ['all', ['==', ['get', 'congestion'], 'low'], ['match', ['get', 'class'], FREE_FLOW_CLASSES, true, false]],
+      layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
+      paint: {
+        'line-color': TRAFFIC.free,
+        'line-width': width([[10, 1], [13, 2], [15, 3.5], [17, 6], [19, 12], [20, 18]]),
+        'line-offset': offset,
+        'line-opacity': 0.85,
+      },
     },
-  })
+    {
+      id: 'traffic',
+      type: 'line',
+      source: 'traffic',
+      'source-layer': 'traffic',
+      minzoom: 10,
+      filter: ['match', ['get', 'congestion'], ['moderate', 'heavy', 'severe'], true, false],
+      layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
+      paint: {
+        'line-color': ['match', ['get', 'congestion'], 'moderate', TRAFFIC.moderate, 'heavy', TRAFFIC.heavy, TRAFFIC.severe],
+        'line-width': width([[10, 2], [13, 4], [15, 7], [17, 13], [19, 26], [20, 40]]),
+        'line-offset': offset,
+        'line-opacity': 0.95,
+      },
+    },
+  )
 }
 
 /** Switch theme and satellite mode on a live map without reloading the style. */
@@ -282,7 +307,7 @@ export function applyLook(map: MLMap, theme: Theme, satellite: boolean, threeD: 
 }
 
 export function setTrafficVisible(map: MLMap, on: boolean) {
-  if (map.getLayer('traffic')) map.setLayoutProperty('traffic', 'visibility', on ? 'visible' : 'none')
+  for (const id of TRAFFIC_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
 }
 
 /** Mapbox Traffic v1 vector tiles, when a token is configured (VITE_MAPBOX_TOKEN). */
