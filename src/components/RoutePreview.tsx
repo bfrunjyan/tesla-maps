@@ -73,7 +73,7 @@ export function RoutePreview() {
               <span className="route-option__main">
                 <span className="route-option__time">{formatDuration(o.route.totalS)}</span>
                 <span className="route-option__meta">
-                  {formatDistance(o.route.totalM)}
+                  <span>{formatDistance(o.route.totalM)}</span>
                   <ArrivalMeta route={o.route} />
                 </span>
               </span>
@@ -112,12 +112,11 @@ function ArrivalMeta({ route }: { route: Route }) {
   if (arrival) {
     return (
       <span className="arrival" data-level={arrival.level}>
-        {' · '}
         <BatteryIcon pct={Math.max(0, arrival.pct)} size={16} />
         {arrival.reachable ? `${arrival.pct}% at arrival` : 'Charge needed'}
       </span>
     )
   }
   if (typeof route.kWh !== 'number') return null
-  return <> · ≈{route.kWh.toFixed(1)} kWh</>
+  return <span>≈{route.kWh.toFixed(1)} kWh</span>
 }

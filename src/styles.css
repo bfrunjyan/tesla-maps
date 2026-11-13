@@ -815,8 +815,24 @@ h2, p { margin: 0; }
 .route-option[aria-checked='true'] { border-color: var(--accent); background: var(--surface); }
 .route-option__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .route-option__time { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.route-option__meta { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.route-option__side { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 50%; }
+/* Distance and charge at arrival: each stays whole, and moves to the next line as a
+   unit when the card is narrow. The "·" between them is clipped at the start of a line. */
+.route-option__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  margin-left: -14px;
+  clip-path: inset(0 0 0 14px);
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.route-option__meta > * { position: relative; margin-left: 14px; white-space: nowrap; }
+.route-option__meta > * + *::before { content: '·'; position: absolute; left: -10px; }
+/* Tags stack, as narrow as the widest one, leaving the rest to time, distance and charge. */
+.route-option__side { flex: none; width: min-content; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.route-option__side .tag, .route-option__extra { white-space: nowrap; }
 .route-option__extra { font-size: 13px; font-weight: 600; color: var(--text-muted); }
 .tag {
   padding: 3px 8px;
