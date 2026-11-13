@@ -1,4 +1,4 @@
-# Car Nav (prototype)
+# Mapic (prototype)
 
 In-car web navigation for Tesla owners in Armenia, where the built-in map can't route.
 Runs in the car's browser. The UI follows the car's own navigation map layout

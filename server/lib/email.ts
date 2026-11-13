@@ -16,7 +16,7 @@ export async function sendSignInCode(to: string, code: string) {
     body: JSON.stringify({
       from: config.email.from,
       to: [to],
-      subject: `${code} is your sign-in code`,
+      subject: `${code} is your Mapic sign-in code`,
       text: `Your sign-in code is ${code}\n\nIt expires in 10 minutes. If you didn't ask for it, you can ignore this email.`,
     }),
   })

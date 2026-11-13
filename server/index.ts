@@ -11,6 +11,19 @@ import { places } from './routes/places.ts'
 
 const app = new Hono<AppEnv>()
 
+// One canonical address: requests to any other host (e.g. the old *.railway.app URL)
+// redirect to APP_URL, so cookies, CSRF checks and QR links all use the same origin.
+// The health check stays reachable on any host for the platform's probes.
+const canonicalHost = new URL(config.appUrl).host
+app.use('*', async (c, next) => {
+  const host = c.req.header('x-forwarded-host') ?? c.req.header('host') ?? ''
+  if (config.production && host && host !== canonicalHost && c.req.path !== '/api/health') {
+    const url = new URL(c.req.url)
+    return c.redirect(`${config.appUrl}${url.pathname}${url.search}`, 308)
+  }
+  await next()
+})
+
 app.use('*', async (c, next) => {
   await next()
   c.header('X-Content-Type-Options', 'nosniff')
