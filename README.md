@@ -7,7 +7,7 @@ heading-up 3D map, turn card).
 
 ## Run locally
 
-Needs Node 24+ and Postgres (any; Docker is easiest).
+Needs Node 22.18+ and Postgres (any; Docker is easiest).
 
 ```bash
 npm install
@@ -48,7 +48,7 @@ Sessions are httpOnly cookies (90 days, sliding). API code lives in `server/`
 3. Railway runs `npm install`, `npm run build`, `npm start`. `npm start` runs the API and
    serves the built app from one process; migrations apply automatically on start.
 
-Node 24+ is required (`engines` in package.json). `VITE_` variables are baked in at build
+Node 22.18+ is required (`engines` in package.json); it runs the server's TypeScript directly. `VITE_` variables are baked in at build
 time, so redeploy after changing them. Rate limits are in memory: run a single instance
 (or move them to Postgres/Redis before scaling out).
 
