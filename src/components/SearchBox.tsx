@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bank, Briefcase, CircleNotch, ClockCounterClockwise, ForkKnife, House, Lightning, MagnifyingGlass, MapPin, Star, X } from '@phosphor-icons/react'
+import { RenameField } from './RenameField'
+import { Bank, Briefcase, CircleNotch, ClockCounterClockwise, ForkKnife, House, Lightning, MagnifyingGlass, MapPin, PencilSimple, Star, X } from '@phosphor-icons/react'
 import { distance, formatDistance } from '../lib/geo'
 import { useLongPress } from '../lib/useLongPress'
 import { FALLBACK_CENTER, startNavigation } from '../nav/controller'
@@ -241,7 +242,7 @@ function TabContent({ tab }: { tab: SearchTab }) {
   }, [kind, cacheKey, origin])
 
   if (tab === 'recents') return recents.length ? <PlaceList places={recents} /> : <p className="empty">{EMPTY.recents}</p>
-  if (tab === 'favorites') return favorites.length ? <PlaceList places={favorites} /> : <p className="empty">{EMPTY.favorites}</p>
+  if (tab === 'favorites') return favorites.length ? <PlaceList places={favorites} editable /> : <p className="empty">{EMPTY.favorites}</p>
   if (state.status === 'error') return <p className="empty">Couldn’t load places right now. Try again in a moment.</p>
   if (state.status === 'done' && state.key === cacheKey && !state.places.length) return <p className="empty">{EMPTY[tab]}</p>
   return <PlaceList places={state.key === cacheKey ? state.places : []} loading={state.status === 'loading' || state.key !== cacheKey} />
@@ -271,8 +272,9 @@ function PlaceIcon({ place }: { place: Place }) {
   return <MapPin size={20} />
 }
 
-function PlaceList({ places, loading }: { places: Place[]; loading?: boolean }) {
+function PlaceList({ places, loading, editable }: { places: Place[]; loading?: boolean; editable?: boolean }) {
   const origin = useStore((s) => s.position)
+  const [editingId, setEditingId] = useState<string | null>(null)
   return (
     <div className="list" aria-busy={loading}>
       {loading && (
@@ -283,15 +285,36 @@ function PlaceList({ places, loading }: { places: Place[]; loading?: boolean }) 
       )}
       <ul>
         {places.map((p) => (
-          <li key={p.id}>
-            <button className="row" onClick={() => choosePlace(p)}>
-              <span className="row__icon"><PlaceIcon place={p} /></span>
-              <span className="row__text">
-                <span className="row__title">{p.name}</span>
-                {p.address && <span className="row__sub">{p.address}</span>}
-              </span>
-              {origin && <span className="row__meta">{formatDistance(distance([origin.lon, origin.lat], [p.lon, p.lat]))}</span>}
-            </button>
+          <li key={p.id} className="row-wrap">
+            {editingId === p.id ? (
+              <div className="row row--editing">
+                <span className="row__icon"><PlaceIcon place={p} /></span>
+                <RenameField
+                  initial={p.name}
+                  onSave={(v) => {
+                    useStore.getState().renamePlace(p, v)
+                    setEditingId(null)
+                  }}
+                  onCancel={() => setEditingId(null)}
+                />
+              </div>
+            ) : (
+              <>
+                <button className="row" onClick={() => choosePlace(p)}>
+                  <span className="row__icon"><PlaceIcon place={p} /></span>
+                  <span className="row__text">
+                    <span className="row__title">{p.name}</span>
+                    {p.address && <span className="row__sub">{p.address}</span>}
+                  </span>
+                  {origin && <span className="row__meta">{formatDistance(distance([origin.lon, origin.lat], [p.lon, p.lat]))}</span>}
+                </button>
+                {editable && (
+                  <button className="icon-btn row__edit" aria-label={`Rename ${p.name}`} onClick={() => setEditingId(p.id)}>
+                    <PencilSimple size={20} />
+                  </button>
+                )}
+              </>
+            )}
           </li>
         ))}
       </ul>

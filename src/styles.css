@@ -758,3 +758,12 @@ h2, p { margin: 0; }
   text-transform: uppercase;
   color: var(--text-faint);
 }
+
+/* Renaming favorites and pins */
+.row-wrap { display: flex; align-items: center; }
+.row-wrap > .row { flex: 1; min-width: 0; }
+.row__edit { margin-right: 8px; color: var(--text-muted); }
+.row--editing { gap: 14px; }
+.rename { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.rename__input { min-height: 48px; font-size: 16px; font-weight: 600; }
+.place-card__titles .rename { margin-top: 6px; }

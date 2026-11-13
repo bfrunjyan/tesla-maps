@@ -40,6 +40,16 @@ describe('saved places', () => {
     expect((await c.get('/api/places')).json.favorites.map((p: { id: string }) => p.id)).toEqual(['F2'])
   })
 
+  it('renames a favorite in place (same entry, new name)', async () => {
+    const c = await signedIn()
+    const pin = place('pin-44.50883,40.16851', 'Dropped pin')
+    await c.post('/api/places/favorites', pin)
+    await c.post('/api/places/favorites', { ...pin, name: 'Music Station' })
+    const favorites = (await c.get('/api/places')).json.favorites
+    expect(favorites).toHaveLength(1)
+    expect(favorites[0]).toMatchObject({ id: pin.id, name: 'Music Station' })
+  })
+
   it('keeps the 25 most recent destinations, newest first', async () => {
     const c = await signedIn()
     for (let i = 1; i <= 30; i++) await c.post('/api/places/recents', place(`R${i}`))

@@ -83,6 +83,8 @@ interface Actions {
   setWork: (p: Place | null) => void
   toggleFavorite: (p: Place) => void
   isFavorite: (p: Place) => boolean
+  /** Rename a saved favorite (synced) and the open place card, if it's the same place. */
+  renamePlace: (p: Place, name: string) => void
   addRecent: (p: Place) => void
   setVoice: (on: boolean) => void
   setLang: (lang: Lang) => void
@@ -178,6 +180,20 @@ export const useStore = create<State & Actions>((set, get) => ({
     cloud(get, () => (existing.length ? Promise.all(existing.map((f) => api.removeFavorite(f.id))) : api.addFavorite(p)))
   },
   isFavorite: (p) => get().favorites.some((f) => samePlace(f, p)),
+  renamePlace: (p, name) => {
+    const clean = name.trim().replace(/\s+/g, ' ').slice(0, 80)
+    if (!clean) return
+    const saved = get().favorites.find((f) => samePlace(f, p))
+    if (saved) {
+      const renamed = { ...saved, name: clean }
+      const next = get().favorites.map((f) => (f === saved ? renamed : f))
+      save('favorites', next)
+      set({ favorites: next })
+      cloud(get, () => api.addFavorite(renamed))
+    }
+    const open = get().selectedPlace
+    if (open && samePlace(open, p)) set({ selectedPlace: { ...open, name: clean } })
+  },
   addRecent: (p) => {
     const next = [p, ...get().recents.filter((r) => !samePlace(r, p))].slice(0, 25)
     save('recents', next)
