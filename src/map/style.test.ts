@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { LayerSpecification } from 'maplibre-gl'
-import { buildStyle, FREE_FLOW_CLASSES, TRAFFIC } from './style'
+import { buildStyle, FREE_FLOW_CLASSES, TRAFFIC, trafficTileUrl } from './style'
 
 const withTraffic = buildStyle({ theme: 'dark', satellite: false, trafficTiles: 'https://example.test/{z}/{x}/{y}.pbf' })
 const layer = (id: string) => withTraffic.layers.find((l) => l.id === id) as LayerSpecification & { filter: unknown; paint: Record<string, unknown> }
@@ -40,5 +40,29 @@ describe('traffic layers', () => {
   it('start hidden (the traffic button turns them on)', () => {
     expect((layer('traffic') as { layout?: { visibility?: string } }).layout?.visibility).toBe('none')
     expect((layer('traffic-free') as { layout?: { visibility?: string } }).layout?.visibility).toBe('none')
+  })
+})
+
+describe('trafficTileUrl', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.useRealTimers()
+  })
+
+  it('is null without a token', () => {
+    vi.stubEnv('VITE_MAPBOX_TOKEN', '')
+    expect(trafficTileUrl()).toBeNull()
+  })
+
+  it('changes every 10 minutes, so a cached refusal can’t outlive a page load', () => {
+    vi.stubEnv('VITE_MAPBOX_TOKEN', 'pk.test')
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-13T14:00:00Z'))
+    const a = trafficTileUrl()
+    vi.setSystemTime(new Date('2026-11-13T14:05:00Z'))
+    expect(trafficTileUrl()).toBe(a)
+    vi.setSystemTime(new Date('2026-11-13T14:11:00Z'))
+    expect(trafficTileUrl()).not.toBe(a)
+    expect(a).toContain('access_token=pk.test')
   })
 })
