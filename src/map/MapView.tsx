@@ -52,6 +52,15 @@ export function MapView() {
       pitchWithRotate: true,
     })
     map.addControl(new AttributionControl({ compact: true }), 'bottom-right')
+    // Map credits: shown on load, then collapsed to the (i) button after 5 s or on the
+    // first tap/zoom (MapLibre already collapses on drag). This is the pattern the OSM
+    // attribution guidelines allow; the (i) button keeps the credits one tap away.
+    const collapseCredits = () => {
+      map.getContainer().querySelector('.maplibregl-ctrl-attrib.maplibregl-compact')?.classList.remove('maplibregl-compact-show')
+    }
+    const creditsTimer = window.setTimeout(collapseCredits, 5000)
+    map.once('click', collapseCredits)
+    map.once('zoomstart', (e) => e.originalEvent && collapseCredits())
     setMap(map)
 
     /* ------------------------------------------------------ markers */
@@ -302,6 +311,7 @@ export function MapView() {
       unsub()
       ro.disconnect()
       cancelAnimationFrame(anim)
+      window.clearTimeout(creditsTimer)
       setMap(null)
       map.remove()
     }
