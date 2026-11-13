@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChargerFilterControl } from './ChargerBar'
 import { RenameField } from './RenameField'
 import { Bank, Briefcase, CircleNotch, ClockCounterClockwise, ForkKnife, House, Lightning, MagnifyingGlass, MapPin, PencilSimple, Star, X } from '@phosphor-icons/react'
+import { chargerToPlace, isFast, nearestChargers } from '../lib/chargers'
 import { distance, formatDistance } from '../lib/geo'
 import { useLongPress } from '../lib/useLongPress'
 import { FALLBACK_CENTER, startNavigation } from '../nav/controller'
@@ -217,7 +219,7 @@ function TabContent({ tab }: { tab: SearchTab }) {
   const recents = useStore((s) => s.recents)
   const favorites = useStore((s) => s.favorites)
   const origin = useOrigin()
-  const kind: CategoryKind | null = tab === 'charging' || tab === 'hungry' || tab === 'lucky' ? tab : null
+  const kind: CategoryKind | null = tab === 'hungry' || tab === 'lucky' ? tab : null
   const cacheKey = kind && `${kind}:${origin.lon},${origin.lat}`
   const [state, setState] = useState<{ key: string | null; status: 'loading' | 'done' | 'error'; places: Place[] }>({ key: null, status: 'done', places: [] })
 
@@ -243,9 +245,41 @@ function TabContent({ tab }: { tab: SearchTab }) {
 
   if (tab === 'recents') return recents.length ? <PlaceList places={recents} /> : <p className="empty">{EMPTY.recents}</p>
   if (tab === 'favorites') return favorites.length ? <PlaceList places={favorites} editable /> : <p className="empty">{EMPTY.favorites}</p>
+  if (tab === 'charging') return <ChargingTab />
   if (state.status === 'error') return <p className="empty">Couldn’t load places right now. Try again in a moment.</p>
   if (state.status === 'done' && state.key === cacheKey && !state.places.length) return <p className="empty">{EMPTY[tab]}</p>
   return <PlaceList places={state.key === cacheKey ? state.places : []} loading={state.status === 'loading' || state.key !== cacheKey} />
+}
+
+/** Nearest charging stations, with the same All / Fast filter as the map. */
+function ChargingTab() {
+  const chargers = useStore((s) => s.chargers)
+  const state = useStore((s) => s.chargersState)
+  const filter = useStore((s) => s.chargerFilter)
+  const origin = useOrigin()
+
+  useEffect(() => {
+    useStore.getState().loadChargers()
+  }, [])
+
+  const places = useMemo(() => nearestChargers(chargers, origin, filter).map((n) => chargerToPlace(n.charger)), [chargers, origin, filter])
+
+  return (
+    <div className="results">
+      <div className="panel__filter">
+        <ChargerFilterControl />
+      </div>
+      {state === 'error' ? (
+        <p className="empty">Couldn’t load charging stations. Check your connection.</p>
+      ) : state !== 'ready' ? (
+        <PlaceList places={[]} loading />
+      ) : places.length ? (
+        <PlaceList places={places} />
+      ) : (
+        <p className="empty">{filter === 'fast' ? 'No fast chargers are listed yet. Switch to All to see every station.' : EMPTY.charging}</p>
+      )}
+    </div>
+  )
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -262,7 +296,7 @@ function PlaceIcon({ place }: { place: Place }) {
   const recents = useStore((s) => s.recents)
   if (favorites.some((f) => f.id === place.id)) return <Star size={20} />
   switch (place.category) {
-    case 'charging': return <Lightning size={20} />
+    case 'charging': return <Lightning size={20} className={place.charger && isFast(place.charger) ? 'is-fast' : undefined} />
     case 'food': return <ForkKnife size={20} />
     case 'attraction': return <Bank size={20} />
     case 'home': return <House size={20} />

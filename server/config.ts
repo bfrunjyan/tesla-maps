@@ -36,6 +36,12 @@ export const config = {
     clientId: env.GOOGLE_CLIENT_ID ?? '',
     clientSecret: env.GOOGLE_CLIENT_SECRET ?? '',
   },
+  chargers: {
+    /** ISO country codes whose charging stations are loaded. */
+    countries: (env.CHARGER_COUNTRIES ?? 'AM').split(',').map((c) => c.trim().toUpperCase()).filter((c) => /^[A-Z]{2}$/.test(c)),
+    /** Optional: free key from openchargemap.org adds power and connector data. */
+    ocmApiKey: env.OCM_API_KEY ?? '',
+  },
   sessionDays: 90,
 }
 

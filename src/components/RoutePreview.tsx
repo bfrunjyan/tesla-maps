@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
-import { BatteryMedium, NavigationArrow, X } from '@phosphor-icons/react'
+import { Car, NavigationArrow, X } from '@phosphor-icons/react'
 import { formatDistance, formatDuration } from '../lib/geo'
 import { endNavigation, goWithRoute, selectRoute } from '../nav/controller'
 import { useStore } from '../state/store'
+import type { Route } from '../types'
+import { vehicleSpec } from '../vehicle/catalog'
+import { useArrival } from '../vehicle/useArrival'
+import { BatteryIcon } from './BatteryIcon'
 
 const AUTO_START_S = 10
 
@@ -34,10 +38,13 @@ export function RoutePreview() {
     return () => window.clearTimeout(t)
   }, [auto, secondsLeft])
 
+  const vehicle = useStore((s) => s.vehicle)
+  const battery = useStore((s) => s.battery)
   if (!nav?.options) return null
   const fastest = nav.options[0].route
   const selected = nav.selected ?? 0
   const anyEnergy = nav.options.some((o) => typeof o.route.kWh === 'number')
+  const carReady = !!vehicleSpec(vehicle) && !!battery
 
   return (
     <section className="surface card route-preview" aria-label="Choose a route">
@@ -67,12 +74,7 @@ export function RoutePreview() {
                 <span className="route-option__time">{formatDuration(o.route.totalS)}</span>
                 <span className="route-option__meta">
                   {formatDistance(o.route.totalM)}
-                  {typeof o.route.kWh === 'number' && (
-                    <>
-                      {' · '}
-                      <BatteryMedium size={14} aria-hidden /> ≈{o.route.kWh.toFixed(1)} kWh
-                    </>
-                  )}
+                  <ArrivalMeta route={o.route} />
                 </span>
               </span>
               <span className="route-option__side">
@@ -86,7 +88,15 @@ export function RoutePreview() {
         })}
       </div>
 
-      {anyEnergy && <p className="route-preview__note">Battery use is an estimate from distance, speed and climbs.</p>}
+      {anyEnergy &&
+        (carReady ? (
+          <p className="route-preview__note">Charge at arrival is an estimate from distance, speed and climbs.</p>
+        ) : (
+          <button className="route-preview__setup" onClick={() => useStore.getState().set({ carSheetOpen: true })}>
+            <Car size={18} aria-hidden />
+            {vehicle ? 'Set your battery level to see charge at arrival' : 'Choose your car to see charge at arrival'}
+          </button>
+        ))}
 
       <button className="btn btn--primary btn--block route-preview__go" onClick={() => goWithRoute()}>
         <NavigationArrow size={20} aria-hidden />
@@ -94,4 +104,20 @@ export function RoutePreview() {
       </button>
     </section>
   )
+}
+
+/** "→ 54 %" at arrival when the car and battery are known; otherwise the energy estimate. */
+function ArrivalMeta({ route }: { route: Route }) {
+  const arrival = useArrival(route)
+  if (arrival) {
+    return (
+      <span className="arrival" data-level={arrival.level}>
+        {' · '}
+        <BatteryIcon pct={Math.max(0, arrival.pct)} size={16} />
+        {arrival.reachable ? `${arrival.pct}% at arrival` : 'Charge needed'}
+      </span>
+    )
+  }
+  if (typeof route.kWh !== 'number') return null
+  return <> · ≈{route.kWh.toFixed(1)} kWh</>
 }

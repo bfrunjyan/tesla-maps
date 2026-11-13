@@ -1,11 +1,9 @@
 import { useEffect, type ReactNode } from 'react'
-import { Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal, UserCircle } from '@phosphor-icons/react'
+import { Car, Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal, UserCircle } from '@phosphor-icons/react'
 import { cardinal } from '../lib/geo'
-import { mapCenter } from '../map/mapApi'
 import { trafficTileUrl } from '../map/style'
-import { FALLBACK_CENTER } from '../nav/controller'
-import { categorySearch } from '../services/search'
 import { isLite, useStore } from '../state/store'
+import { BatteryIcon } from './BatteryIcon'
 import { GpsIndicator } from './Location'
 import { SettingsPopover } from './SettingsPopover'
 
@@ -33,6 +31,8 @@ export function MapControls() {
   const settingsOpen = useStore((s) => s.settingsOpen)
   const lite = useStore(isLite)
   const user = useStore((s) => s.user)
+  const vehicle = useStore((s) => s.vehicle)
+  const battery = useStore((s) => s.battery)
   const s = useStore.getState()
 
   // Tools hide themselves after a few seconds without interaction, like in the car.
@@ -47,19 +47,6 @@ export function MapControls() {
     if (!toolsVisible && settingsOpen) useStore.getState().set({ settingsOpen: false })
   }, [toolsVisible, settingsOpen])
 
-  const toggleChargers = async () => {
-    if (showChargers) return s.set({ showChargers: false })
-    s.set({ showChargers: true })
-    try {
-      const chargers = await categorySearch('charging', mapCenter() ?? FALLBACK_CENTER)
-      useStore.getState().set({ chargers })
-      if (!chargers.length) useStore.getState().showToast('No charging stations nearby')
-    } catch {
-      useStore.getState().set({ showChargers: false })
-      useStore.getState().showToast('Couldn’t load charging stations')
-    }
-  }
-
   const toggleTraffic = () => {
     if (!HAS_TRAFFIC) return s.showToast('Traffic needs a Mapbox token (VITE_MAPBOX_TOKEN)')
     s.set({ showTraffic: !showTraffic })
@@ -69,6 +56,20 @@ export function MapControls() {
     <div className="controls">
       <div className="controls__top">
       <GpsIndicator />
+      <button
+        className="surface battery-chip"
+        aria-label={battery ? `Battery ${Math.round(battery.pct)} percent. Open car and battery` : vehicle ? 'Set battery level' : 'Choose your car'}
+        onClick={() => s.set({ carSheetOpen: true, toolsVisible: false })}
+      >
+        {battery ? (
+          <>
+            <BatteryIcon pct={battery.pct} size={24} />
+            <span className="battery-chip__pct">{Math.round(battery.pct)}%</span>
+          </>
+        ) : (
+          <Car size={26} />
+        )}
+      </button>
       <button
         className="surface account-btn"
         aria-label={user ? `Account: ${user.email}` : 'Sign in'}
@@ -105,7 +106,7 @@ export function MapControls() {
           <Tool label="Show places" active={showPois} onClick={() => s.set({ showPois: !showPois })}>
             <MapPin size={24} />
           </Tool>
-          <Tool label="Show charging stations" active={showChargers} onClick={toggleChargers}>
+          <Tool label="Show charging stations" active={showChargers} onClick={s.toggleChargers}>
             <Lightning size={24} />
           </Tool>
           <Tool

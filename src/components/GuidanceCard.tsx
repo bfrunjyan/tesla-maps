@@ -3,6 +3,8 @@ import { formatClock, formatDistance, formatDuration } from '../lib/geo'
 import { endNavigation, startNavigation } from '../nav/controller'
 import { useStore } from '../state/store'
 import { ManeuverIcon } from './icons'
+import { useArrival } from '../vehicle/useArrival'
+import { BatteryIcon } from './BatteryIcon'
 import { RoutePreview } from './RoutePreview'
 
 /** Turn-by-turn card: next maneuver, upcoming turn list, trip summary. */
@@ -12,6 +14,7 @@ export function GuidanceCard() {
   const listOpen = useStore((s) => s.turnListOpen)
   const favorites = useStore((s) => s.favorites)
   const s = useStore.getState()
+  const arrival = useArrival(nav?.route, nav?.route ? (nav.progress?.remainingM ?? nav.route.totalM) / Math.max(1, nav.route.totalM) : 1)
   if (!nav) return null
   if (nav.status === 'choosing') return <RoutePreview />
   const dest = nav.destination
@@ -103,6 +106,13 @@ export function GuidanceCard() {
           <span className="guide__eta">{formatClock(eta)}</span>
           <span className="guide__meta">
             {formatDuration(remainingS)} · {formatDistance(remainingM)}
+            {arrival && (
+              <span className="arrival" data-level={arrival.level} aria-label={arrival.reachable ? `${arrival.pct} percent battery at arrival` : 'Charging needed to arrive'}>
+                {' · '}
+                <BatteryIcon pct={Math.max(0, arrival.pct)} size={18} />
+                {arrival.reachable ? `${arrival.pct}%` : 'Charge needed'}
+              </span>
+            )}
           </span>
           {destHeader}
         </div>

@@ -809,3 +809,157 @@ h2, p { margin: 0; }
 .route-preview__note { margin: 0; padding: 0 4px; font-size: 12px; line-height: 1.4; color: var(--text-faint); }
 .route-preview__go { min-height: 56px; font-size: 16px; }
 .route-preview__count { font-variant-numeric: tabular-nums; opacity: 0.85; }
+
+/* ------------------------------------------------------------ chargers */
+.is-fast { color: var(--danger); }
+.charger-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 6px;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+@starting-style { .charger-bar { opacity: 0; transform: translate(-50%, 8px); } }
+.charger-bar__status { display: block; padding: 14px 18px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+.charger-filter { min-width: 250px; background: transparent; padding: 0; }
+.charger-filter .segmented__opt { min-height: 52px; padding: 0 16px; }
+.charger-filter .segmented__opt[aria-checked='true'] { background: var(--surface-raised); }
+.charger-filter__count { margin-left: 2px; font-weight: 500; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.bolts { display: inline-flex; }
+.bolts svg + svg { margin-left: -7px; }
+.segmented__opt[aria-checked='true'] .bolts { color: var(--danger); }
+.panel__filter { padding: 10px 14px 6px; flex: none; }
+.panel__filter .charger-filter { background: var(--surface-raised); padding: 4px; min-width: 0; }
+.panel__filter .charger-filter .segmented__opt { min-height: 44px; }
+.panel__filter .charger-filter .segmented__opt[aria-checked='true'] { background: var(--surface); }
+/* Toasts sit above the charger bar. */
+.app[data-charger-bar='true'] .toast { bottom: 100px; }
+
+.specs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.spec {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.spec[data-fast='true'] { background: rgba(229, 38, 47, 0.16); color: var(--danger); }
+:root[data-theme='dark'] .spec[data-fast='true'] { color: #ff7a80; }
+.spec[data-status='free'] { background: rgba(47, 179, 109, 0.18); color: #2fb36d; }
+.spec[data-status='busy'] { background: rgba(243, 156, 18, 0.2); color: #d98a0b; }
+.spec[data-status='offline'] { color: var(--text-faint); }
+
+/* ------------------------------------------------------- car & battery */
+.battery-icon[data-level='low'] { color: #f39c12; }
+.battery-icon[data-level='critical'] { color: var(--danger); }
+.battery-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 60px;
+  height: 60px;
+  padding: 0 14px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: transform 140ms var(--ease-out);
+}
+.battery-chip:active { transform: scale(0.95); }
+.arrival { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.arrival[data-level='low'] { color: #d98a0b; }
+.arrival[data-level='critical'] { color: var(--danger); }
+:root[data-theme='dark'] .arrival[data-level='low'] { color: #f5b041; }
+:root[data-theme='dark'] .arrival[data-level='critical'] { color: #ff7a80; }
+.route-preview__setup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: left;
+}
+:root[data-theme='dark'] .route-preview__setup { color: #8fb0ff; }
+
+.car-sheet { width: min(520px, 100%); }
+.car-sheet[data-wide='true'] { width: min(760px, 100%); }
+.car, .picker { padding: 4px 16px 0 0; display: flex; flex-direction: column; gap: 18px; }
+.car__hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: center; }
+.car__photo { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--radius); display: block; }
+.car__id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.car__name { font-size: 20px; font-weight: 700; line-height: 1.2; }
+.car__trim { font-size: 14px; color: var(--text-muted); line-height: 1.4; }
+.car__change { align-self: flex-start; margin-top: 8px; }
+.battery { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--divider); }
+.battery__head { display: flex; align-items: center; justify-content: space-between; }
+.battery__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.battery__step { background: var(--surface-raised); }
+.battery__value { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.battery__slider { width: 100%; height: 44px; accent-color: var(--accent); touch-action: pan-y; }
+
+.picker__q { margin: 0; font-size: 16px; font-weight: 600; }
+.models { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.model {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  text-align: left;
+  transition: transform 160ms var(--ease-out);
+}
+.model:active { transform: scale(0.97); }
+.model__photo { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.model__name { padding: 12px 14px; font-size: 16px; font-weight: 700; }
+.years { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.year {
+  width: 100%;
+  min-height: 52px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease;
+}
+.year:active, .trim:active { transform: scale(0.97); background: var(--surface-press); }
+.trims { display: flex; flex-direction: column; gap: 8px; }
+.trim {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  text-align: left;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease;
+}
+.trim__name { font-size: 16px; font-weight: 600; }
+.trim__meta { font-size: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.credits { font-size: 12px; color: var(--text-faint); }
+.credits summary { cursor: pointer; min-height: 32px; display: inline-flex; align-items: center; }
+.credits ul { margin: 4px 0 0; display: grid; gap: 2px; }
+.credits a { color: var(--text-muted); }
+@media (max-width: 640px) {
+  .models { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .car__hero { grid-template-columns: 1fr; }
+  .charger-filter { min-width: 0; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .model:hover, .year:hover, .trim:hover { filter: brightness(1.06); }
+}

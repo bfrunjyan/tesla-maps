@@ -46,6 +46,14 @@ async function loadAccount(user: User, { fresh }: { fresh: boolean }) {
     : await api.places()
   save(OWNER_KEY, user.id)
   get().setPlaces(places)
+  // The car: the account's choice wins; a car picked before signing in is saved to the account.
+  try {
+    const { vehicle } = await api.vehicle()
+    if (vehicle) get().setVehicle(vehicle, false)
+    else if (get().vehicle) await api.setVehicle(get().vehicle)
+  } catch {
+    /* keep the local choice; it syncs on the next change */
+  }
   if (fresh && hasGuestData) get().showToast('Places from this car were added to your account')
 }
 

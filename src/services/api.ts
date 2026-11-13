@@ -1,4 +1,4 @@
-import type { Place } from '../types'
+import type { Charger, Place, Vehicle } from '../types'
 
 export interface User {
   id: string
@@ -65,6 +65,10 @@ export const api = {
     request<{ status: 'pending' | 'approved' | 'expired' | 'claimed' | 'invalid'; user?: User }>('POST', '/auth/qr/poll', { pollToken }),
   qrCheck: (code: string) => request<{ status: 'pending' }>('GET', `/auth/qr/${encodeURIComponent(code)}`),
   qrApprove: (code: string) => request<{ ok: true }>('POST', '/auth/qr/approve', { code }),
+
+  chargers: () => request<{ chargers: Charger[]; updatedAt: string; sources: string[] }>('GET', '/chargers'),
+  vehicle: () => request<{ vehicle: Vehicle | null }>('GET', '/vehicle'),
+  setVehicle: (vehicle: Vehicle | null) => request<{ ok: true }>('PUT', '/vehicle', { vehicle }),
 
   places: () => request<SavedPlaces>('GET', '/places'),
   importPlaces: (local: SavedPlaces) => request<SavedPlaces>('POST', '/places/import', local),

@@ -5,6 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 // Bundle MapLibre's worker as its own file so production builds can load it.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { lerpAngle, lerpLngLat, type LngLat } from '../lib/geo'
+import { chargerToPlace, filterChargers, isFast } from '../lib/chargers'
 import { angleDiff } from '../nav/heading'
 import { FALLBACK_CENTER, selectRoute } from '../nav/controller'
 import { reverseGeocode } from '../services/search'
@@ -24,7 +25,26 @@ const PIN_SVG = `<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="tr
   <circle cx="16" cy="15" r="5" fill="#fff"/>
 </svg>`
 
-const BOLT_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#fff"/></svg>`
+/** Charger pin, drawn once per kind: a map pin with a lightning bolt (red = fast, white = standard; both read on the dark and light map). */
+function chargerPin(fill: string, stroke: string, bolt: string) {
+  const scale = 2
+  const canvas = document.createElement('canvas')
+  canvas.width = 32 * scale
+  canvas.height = 42 * scale
+  const ctx = canvas.getContext('2d')!
+  ctx.scale(scale, scale)
+  const pin = new Path2D('M16 1.5C8.5 1.5 2.5 7.3 2.5 15c0 10.2 13.5 25 13.5 25S29.5 25.2 29.5 15C29.5 7.3 23.5 1.5 16 1.5z')
+  ctx.fillStyle = fill
+  ctx.fill(pin)
+  ctx.lineWidth = 2
+  ctx.strokeStyle = stroke
+  ctx.stroke(pin)
+  ctx.translate(7, 6)
+  ctx.scale(0.75, 0.75)
+  ctx.fillStyle = bolt
+  ctx.fill(new Path2D('M13 2 4 14h7l-1 8 9-12h-7z'))
+  return ctx.getImageData(0, 0, canvas.width, canvas.height)
+}
 
 function el(html: string, className: string) {
   const d = document.createElement('div')
@@ -77,7 +97,6 @@ export function MapView() {
     const carMarker = new Marker({ element: el(CAR_SVG, 'car-marker'), rotationAlignment: 'map', pitchAlignment: 'map' })
     let destMarker: Marker | null = null
     let pinMarker: Marker | null = null
-    let chargerMarkers: Marker[] = []
 
     /* ------------------------------------------ smooth car movement */
     let shown: { at: LngLat; heading: number } | null = null
@@ -186,6 +205,50 @@ export function MapView() {
       src.setData({ ...EMPTY_LINE, geometry: { type: 'LineString', coordinates: coords } })
     }
 
+    function ensureChargerLayer() {
+      if (map.getSource('chargers')) return
+      map.addImage('pin-fast', chargerPin('#e5262f', '#ffffff', '#ffffff'), { pixelRatio: 2 })
+      map.addImage('pin-std', chargerPin('#f4f4f4', '#26272b', '#26272b'), { pixelRatio: 2 })
+      map.addSource('chargers', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addLayer({
+        id: 'chargers',
+        type: 'symbol',
+        source: 'chargers',
+        layout: {
+          'icon-image': ['case', ['get', 'fast'], 'pin-fast', 'pin-std'],
+          'icon-anchor': 'bottom',
+          'icon-allow-overlap': true,
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 12, 0.9, 16, 1.1],
+          // Fast chargers draw on top where pins overlap.
+          'symbol-sort-key': ['case', ['get', 'fast'], 1, 0],
+          'text-field': ['step', ['zoom'], '', 13, ['get', 'label']],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': 11,
+          'text-anchor': 'top',
+          'text-offset': [0, 0.2],
+          'text-optional': true,
+          visibility: 'none',
+        },
+        paint: { 'text-color': '#ffffff', 'text-halo-color': '#1c1b1d', 'text-halo-width': 1.4 },
+      })
+    }
+
+    function drawChargers() {
+      const src = map.getSource('chargers') as GeoJSONSource | undefined
+      if (!src) return
+      const s = useStore.getState()
+      map.setLayoutProperty('chargers', 'visibility', s.showChargers ? 'visible' : 'none')
+      if (!s.showChargers) return
+      src.setData({
+        type: 'FeatureCollection',
+        features: filterChargers(s.chargers, s.chargerFilter).map((c) => ({
+          type: 'Feature' as const,
+          properties: { id: c.id, fast: isFast(c), label: c.maxKw != null ? `${c.maxKw} kW` : '' },
+          geometry: { type: 'Point' as const, coordinates: [c.lon, c.lat] },
+        })),
+      })
+    }
+
     function drawOptions(fit: boolean) {
       const src = map.getSource('route-options') as GeoJSONSource | undefined
       const nav = useStore.getState().nav
@@ -242,6 +305,8 @@ export function MapView() {
 
     map.on('load', () => {
       ensureRouteLayers()
+      ensureChargerLayer()
+      drawChargers()
       applyLayerToggles()
       drawRoute()
     })
@@ -313,6 +378,12 @@ export function MapView() {
       }
       const s = useStore.getState()
       if (s.panelOpen) return s.closePanel()
+      // Charger pins: a generous hit area, since they're tapped from the driver's seat.
+      if (s.showChargers && map.getLayer('chargers')) {
+        const hit = map.queryRenderedFeatures([[e.point.x - 18, e.point.y - 6], [e.point.x + 18, e.point.y + 44]], { layers: ['chargers'] })[0]
+        const charger = hit && s.chargers.find((c) => c.id === hit.properties.id)
+        if (charger) return s.set({ selectedPlace: chargerToPlace(charger) })
+      }
       const poi = s.showPois && map.getLayer('poi-label') ? map.queryRenderedFeatures(e.point, { layers: ['poi-label'] })[0] : undefined
       if (poi) {
         const [lon, lat] = (poi.geometry as GeoJSON.Point).coordinates
@@ -380,29 +451,15 @@ export function MapView() {
         pinMarker = null
         const sp = s.selectedPlace
         if (sp && !s.nav) {
-          pinMarker = new Marker({ element: el(PIN_SVG, 'dest-marker'), anchor: 'bottom' }).setLngLat([sp.lon, sp.lat]).addTo(map)
+          // A charger already has its own pin on the map.
+          if (!(sp.charger && s.showChargers)) pinMarker = new Marker({ element: el(PIN_SVG, 'dest-marker'), anchor: 'bottom' }).setLngLat([sp.lon, sp.lat]).addTo(map)
           if (sp.id !== prev.selectedPlace?.id) {
             if (s.follow) s.set({ follow: false })
             map.easeTo({ center: [sp.lon, sp.lat], zoom: Math.max(map.getZoom(), 16), duration: 700, padding: { left: 0, top: 0, bottom: 0, right: 0 } })
           }
         }
       }
-      if (s.showChargers !== prev.showChargers || (s.showChargers && s.chargers !== prev.chargers)) {
-        chargerMarkers.forEach((m) => m.remove())
-        chargerMarkers = []
-        if (s.showChargers) {
-          chargerMarkers = s.chargers.map((c) => {
-            const node = el(BOLT_SVG, 'charger-marker')
-            node.setAttribute('role', 'button')
-            node.setAttribute('aria-label', c.name)
-            node.addEventListener('click', (ev) => {
-              ev.stopPropagation()
-              useStore.getState().set({ selectedPlace: c })
-            })
-            return new Marker({ element: node }).setLngLat([c.lon, c.lat]).addTo(map)
-          })
-        }
-      }
+      if (s.showChargers !== prev.showChargers || s.chargers !== prev.chargers || s.chargerFilter !== prev.chargerFilter) drawChargers()
     })
 
     const ro = new ResizeObserver(() => map.resize())

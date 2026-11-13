@@ -7,9 +7,11 @@ export interface RouteOption {
   tags: RouteTag[]
 }
 
-/** Two routes are the same choice if their length and time are within a whisker. */
+/** Two routes are the same choice if length and time are within a whisker (60 m / 30 s, or 1.5 % / 2 % on long trips). */
 function sameRoute(a: Route, b: Route) {
-  return Math.abs(a.totalM - b.totalM) < 60 && Math.abs(a.totalS - b.totalS) < 30
+  const metres = Math.max(60, 0.015 * Math.max(a.totalM, b.totalM))
+  const seconds = Math.max(30, 0.02 * Math.max(a.totalS, b.totalS))
+  return Math.abs(a.totalM - b.totalM) < metres && Math.abs(a.totalS - b.totalS) < seconds
 }
 
 /**

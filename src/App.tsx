@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { ChargerBar } from './components/ChargerBar'
 import { GuidanceCard } from './components/GuidanceCard'
 import { LocationSheet } from './components/Location'
 import { MapControls } from './components/MapControls'
@@ -11,6 +12,7 @@ import { useStore } from './state/store'
 
 // Loaded on demand: sign-in screens and the phone link page aren't needed to show the map.
 const AccountSheet = lazy(() => import('./components/AccountSheet').then((m) => ({ default: m.AccountSheet })))
+const CarSheet = lazy(() => import('./components/CarSheet').then((m) => ({ default: m.CarSheet })))
 const LinkPage = lazy(() => import('./components/LinkPage').then((m) => ({ default: m.LinkPage })))
 
 const DEV = new URLSearchParams(location.search).has('dev')
@@ -40,13 +42,15 @@ function MapApp() {
   const areaLabel = useStore((s) => s.areaLabel)
   const closePanel = useStore((s) => s.closePanel)
   const accountOpen = useStore((s) => s.accountOpen)
+  const carSheetOpen = useStore((s) => s.carSheetOpen)
+  const chargerBar = useStore((s) => s.showChargers && !s.nav)
 
   useEffect(() => {
     initLocation()
   }, [])
 
   return (
-    <div className="app">
+    <div className="app" data-charger-bar={chargerBar}>
       <MapView />
       <div className="scrim" data-visible={panelOpen} onClick={closePanel} aria-hidden />
       <div className="left-column">
@@ -61,6 +65,12 @@ function MapApp() {
         </Suspense>
       )}
       <LocationSheet />
+      {carSheetOpen && (
+        <Suspense fallback={null}>
+          <CarSheet />
+        </Suspense>
+      )}
+      <ChargerBar />
       <Toast />
       {DEV && <DevBar />}
     </div>

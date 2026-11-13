@@ -3,7 +3,10 @@ import { cancelSpeech, setVoiceEnabled, speak } from '../lib/voice'
 import { reverseGeocode } from '../services/search'
 import { fetchRoute, fetchRouteOptions } from '../services/routing'
 import { useStore } from '../state/store'
-import type { Place, Position } from '../types'
+import type { NavProgress, Place, Position, Route } from '../types'
+import { vehicleSpec } from '../vehicle/catalog'
+import { whToPct } from './battery'
+import { baseWhPerKm } from './energy'
 import { rawHeading, smoothHeading } from './heading'
 import { computeProgress } from './progress'
 
@@ -112,6 +115,34 @@ let areaAbort: AbortController | null = null
 
 let headingAnchor: LngLat | null = null
 
+/* ------------------------------------------------------ battery estimate */
+
+let pendingWh = 0
+
+/**
+ * Lowers the battery estimate as the car moves. On a route with an energy estimate
+ * it uses the route's own figure (which includes climbs), so charge at arrival stays
+ * steady; otherwise a flat-road estimate from speed.
+ */
+function trackBattery(prev: Position | null, pos: Position, route: Route | null, progress: NavProgress | null, lastProgress: NavProgress | null) {
+  const s = get()
+  const spec = vehicleSpec(s.vehicle)
+  if (!spec || !s.battery || !prev) return
+  const moved = distance([prev.lon, prev.lat], [pos.lon, pos.lat])
+  if (moved < 1 || moved > 500) return // standing still, or a GPS jump
+  const along = progress && lastProgress ? progress.alongM - lastProgress.alongM : 0
+  const onRoute = route && typeof route.kWh === 'number' && progress && progress.offRouteM < 30 && along > 0
+  const wh = onRoute
+    ? route.kWh! * 1000 * (along / route.totalM)
+    : (moved / 1000) * baseWhPerKm(pos.speed * 3.6)
+  pendingWh += wh * spec.factor
+  const deltaPct = whToPct(pendingWh, spec.capacityKWh)
+  if (deltaPct >= 0.25) {
+    pendingWh = 0
+    s.drainBattery(deltaPct)
+  }
+}
+
 export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
   const s = get()
   const prev = s.position
@@ -140,6 +171,7 @@ export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
   if (raw != null) headingAnchor = here
   const pos = { ...fix, heading: smoothHeading(prev?.heading ?? null, raw, fix.speed) }
   s.set({ position: pos, positionSource: source })
+  if (source !== 'fallback') trackBattery(prev, pos, route, progress, nav?.progress ?? null)
   updateAreaLabel(pos)
 
   if (!route || !progress || !nav) return

@@ -2,7 +2,9 @@ import { create } from 'zustand'
 import { load, save } from '../lib/storage'
 import { api, type AuthMethods, type SavedPlaces, type User } from '../services/api'
 import type { RouteOption } from '../nav/routeOptions'
-import type { NavProgress, Place, Position, Route } from '../types'
+import type { ChargerFilter } from '../lib/chargers'
+import { clampPct } from '../nav/battery'
+import type { Battery, Charger, NavProgress, Place, Position, Route, Vehicle } from '../types'
 
 export type SearchTab = 'recents' | 'favorites' | 'charging' | 'hungry' | 'lucky'
 export type SearchMode = 'navigate' | 'set-home' | 'set-work'
@@ -40,7 +42,14 @@ interface State {
   threeD: boolean
   showPois: boolean
   showChargers: boolean
-  chargers: Place[]
+  chargers: Charger[]
+  chargersState: 'idle' | 'loading' | 'ready' | 'error'
+  chargerFilter: ChargerFilter
+
+  /** The driver's car and its battery level (for charge at arrival). */
+  vehicle: Vehicle | null
+  battery: Battery | null
+  carSheetOpen: boolean
   toolsVisible: boolean
   mapBearing: number
   satellite: boolean
@@ -92,6 +101,16 @@ interface Actions {
   addRecent: (p: Place) => void
   setVoice: (on: boolean) => void
   setLang: (lang: Lang) => void
+  /** Loads the charger feed (cached for 10 minutes). */
+  loadChargers: () => Promise<void>
+  /** Shows or hides chargers on the map. */
+  toggleChargers: () => void
+  /** Saves the car locally and, when signed in, to the account. `sync: false` when it came from the account. */
+  setVehicle: (v: Vehicle | null, sync?: boolean) => void
+  /** The driver set the battery level by hand. */
+  setBattery: (pct: number) => void
+  /** Mapic's running estimate while driving (keeps the time it was last set). */
+  drainBattery: (deltaPct: number) => void
   /** Replace saved places (after sign-in / loading the account). */
   setPlaces: (p: SavedPlaces) => void
   /** Remove personal places from this device (sign-out). */
@@ -102,6 +121,7 @@ const samePlace = (a: Place, b: Place) =>
   a.id === b.id || (Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lon - b.lon) < 1e-5)
 
 let toastSeq = 0
+let chargersLoadedAt = 0
 
 /** When signed in, mirror a change to the account; local state has already changed. */
 function cloud(get: () => State & Actions, op: () => Promise<unknown>) {
@@ -120,6 +140,12 @@ export const useStore = create<State & Actions>((set, get) => ({
   showPois: load('showPois', false),
   showChargers: false,
   chargers: [],
+  chargersState: 'idle',
+  chargerFilter: load<ChargerFilter>('chargerFilter', 'all'),
+
+  vehicle: load<Vehicle | null>('vehicle', null),
+  battery: load<Battery | null>('battery', null),
+  carSheetOpen: false,
   toolsVisible: false,
   mapBearing: 0,
   satellite: load('satellite', false),
@@ -156,7 +182,7 @@ export const useStore = create<State & Actions>((set, get) => ({
 
   set: (patch) => {
     set(patch)
-    for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting', 'mapDetail', 'autoLite'] as const) {
+    for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting', 'mapDetail', 'autoLite', 'chargerFilter'] as const) {
       if (key in patch) save(key, patch[key])
     }
   },
@@ -211,6 +237,49 @@ export const useStore = create<State & Actions>((set, get) => ({
   setLang: (lang) => {
     save('lang', lang)
     set({ lang })
+  },
+  loadChargers: async () => {
+    const s = get()
+    if (s.chargersState === 'loading' || (s.chargersState === 'ready' && Date.now() - chargersLoadedAt < 600_000)) return
+    set({ chargersState: 'loading' })
+    try {
+      const feed = await api.chargers()
+      chargersLoadedAt = Date.now()
+      set({ chargers: feed.chargers, chargersState: 'ready' })
+    } catch {
+      set({ chargersState: get().chargers.length ? 'ready' : 'error' })
+    }
+  },
+  toggleChargers: () => {
+    const on = !get().showChargers
+    set({ showChargers: on })
+    if (!on) return
+    get()
+      .loadChargers()
+      .then(() => {
+        const st = get()
+        if (st.chargersState === 'error') {
+          set({ showChargers: false })
+          st.showToast('Couldn’t load charging stations')
+        }
+      })
+  },
+  setVehicle: (v, sync = true) => {
+    save('vehicle', v)
+    set({ vehicle: v })
+    if (sync) cloud(get, () => api.setVehicle(v))
+  },
+  setBattery: (pct) => {
+    const battery: Battery = { pct: clampPct(Math.round(pct)), at: Date.now(), source: 'manual' }
+    save('battery', battery)
+    set({ battery })
+  },
+  drainBattery: (deltaPct) => {
+    const b = get().battery
+    if (!b || deltaPct <= 0) return
+    const battery = { ...b, pct: clampPct(b.pct - deltaPct) }
+    save('battery', battery)
+    set({ battery })
   },
   setPlaces: ({ home, work, favorites, recents }) => {
     save('home', home)

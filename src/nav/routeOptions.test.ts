@@ -55,6 +55,11 @@ describe('buildOptions', () => {
     expect(options[0].tags).toEqual(['Fastest', 'Shortest', 'Economy'])
   })
 
+  it('treats a long trip’s near-identical routes as one (68.3 km vs 67.8 km, same time)', () => {
+    const options = buildOptions([route(71 * 60, 68300, 18), route(71 * 60 + 20, 67800, 17.8)])
+    expect(options).toHaveLength(1)
+  })
+
   it('skips Economy when an energy estimate is missing', () => {
     const options = buildOptions([route(600, 5000, 1), route(700, 4000)])
     expect(options.flatMap((o) => o.tags)).not.toContain('Economy')

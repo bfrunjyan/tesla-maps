@@ -8,6 +8,8 @@ import { sql } from './db.ts'
 import { signInCodeEmail } from './lib/emailTemplates.ts'
 import { csrfGuard, loadSession, type AppEnv } from './lib/session.ts'
 import { auth } from './routes/auth.ts'
+import { chargers } from './routes/chargers.ts'
+import { vehicle } from './routes/vehicle.ts'
 import { places } from './routes/places.ts'
 
 export const app = new Hono<AppEnv>()
@@ -47,6 +49,8 @@ if (!config.production) {
 }
 app.route('/api/auth', auth)
 app.route('/api/places', places)
+app.route('/api/chargers', chargers)
+app.route('/api/vehicle', vehicle)
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404))
 
 app.onError((err, c) => {

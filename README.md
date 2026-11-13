@@ -61,6 +61,27 @@ Memory over a 3-minute drive: 14.3 → 14.4 MB heap, steady DOM nodes and listen
 First load: ~464 KB (Brotli; was 2.1 MB uncompressed). After a deploy only the app chunk
 (~35 KB) is new; MapLibre and React stay cached.
 
+## Chargers
+
+The server keeps a feed of every charging station in `CHARGER_COUNTRIES` (default `AM`),
+refreshed every 12 hours and saved in Postgres, and serves it at `GET /api/chargers`. The
+app shows them as pins (red = fast, 50 kW+; white = standard) with an All / Fast filter on
+the map and in the Charging tab.
+
+- **OpenStreetMap** (always on): about 85 stations in Armenia, few with power listed.
+- **Open Charge Map** (optional): set `OCM_API_KEY` (free at openchargemap.org) to add power
+  and connector data. Entries within 60 m of each other are merged.
+- **Live status** (free / busy / offline): no Armenian network publishes it. Each charger has
+  a `status` field that stays empty until a network shares data (e.g. via OCPI).
+
+## Car and battery
+
+Drivers pick their Tesla (model, year, version; `src/vehicle/catalog.ts`) from the battery
+chip on the map. The choice is saved on the device and in the account (`/api/vehicle`).
+They set the battery level by hand; Mapic lowers it as the car moves and shows the charge
+at arrival on each route option and during guidance (amber under 20 %, red under 10 %).
+Battery sizes and consumption are estimates. Photo credits: `public/cars/CREDITS.md`.
+
 ## Route choices
 
 Picking a destination shows up to 3 routes before guidance starts: the fastest, up to two

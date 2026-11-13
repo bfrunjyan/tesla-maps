@@ -121,10 +121,9 @@ export async function reverseGeocode(lon: number, lat: number, signal?: AbortSig
   return { place: { ...place, lon, lat }, area }
 }
 
-export type CategoryKind = 'charging' | 'hungry' | 'lucky'
+export type CategoryKind = 'hungry' | 'lucky'
 
 const CATEGORY_QUERY: Record<CategoryKind, string> = {
-  charging: 'nwr["amenity"="charging_station"]',
   hungry: 'nwr["amenity"~"^(restaurant|fast_food|cafe)$"]["name"]',
   lucky: 'nwr["tourism"~"^(attraction|viewpoint|museum|artwork)$"]["name"]',
 }
@@ -148,7 +147,7 @@ export async function categorySearch(kind: CategoryKind, near: { lon: number; la
           const lon = e.lon ?? e.center?.lon
           if (lat == null || lon == null) return null
           const t = e.tags ?? {}
-          const name = t.name || t['name:en'] || t.operator || t.brand || (kind === 'charging' ? 'Charging station' : 'Unnamed')
+          const name = t.name || t['name:en'] || t.operator || t.brand || 'Unnamed'
           const address = [t['addr:street'] && `${t['addr:street']} ${t['addr:housenumber'] ?? ''}`.trim(), t.operator && t.operator !== name ? t.operator : '', t.cuisine?.replace(/;/g, ', ')]
             .filter(Boolean)
             .join(' · ')
@@ -158,7 +157,7 @@ export async function categorySearch(kind: CategoryKind, near: { lon: number; la
             address,
             lon,
             lat,
-            category: kind === 'charging' ? 'charging' : kind === 'hungry' ? 'food' : 'attraction',
+            category: kind === 'hungry' ? 'food' : 'attraction',
           } satisfies Place
         })
         .filter(Boolean)

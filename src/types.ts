@@ -9,6 +9,40 @@ export interface Place {
   lon: number
   lat: number
   category?: PlaceCategory
+  /** Present for charging stations. */
+  charger?: Charger
+}
+
+/** A charging station from the server's charger feed (see server/lib/chargerData.ts). */
+export interface Charger {
+  id: string
+  name: string
+  operator: string | null
+  lon: number
+  lat: number
+  /** Highest connector power in kW; null when the source doesn't list it. */
+  maxKw: number | null
+  dc: boolean | null
+  connectors: string[]
+  points: number | null
+  source: 'osm' | 'ocm'
+  /** Live availability; null until a charging network shares it. */
+  status: { state: 'free' | 'busy' | 'offline'; free?: number; total?: number; at: string } | null
+}
+
+/** The driver's car: ids from src/vehicle/catalog.ts. */
+export interface Vehicle {
+  model: string
+  year: number
+  trim: string
+}
+
+export interface Battery {
+  /** Percent, 0–100 (fractional while Mapic estimates it between corrections). */
+  pct: number
+  /** When it was last set or read. */
+  at: number
+  source: 'manual' | 'tesla'
 }
 
 export interface Position {
