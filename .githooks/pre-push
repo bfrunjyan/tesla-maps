@@ -1,0 +1,9 @@
+#!/bin/sh
+# Runs before every `git push`: typecheck and all tests. A failure blocks the push.
+# (Installed by `npm install` via the "prepare" script: git config core.hooksPath .githooks)
+set -e
+echo "pre-push: typecheck…"
+npm run --silent typecheck
+echo "pre-push: tests…"
+npm test --silent
+echo "pre-push: all good"

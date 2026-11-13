@@ -32,6 +32,15 @@ API tests need the local Postgres container from above and use a separate `tesla
 database (created once with `docker exec teslamaps-db psql -U postgres -c "CREATE DATABASE teslamaps_test"`).
 They wipe it on every run and refuse to touch any database whose name doesn't end in `_test`.
 
+### Checks before every push
+
+- **On your machine:** `npm install` points git at `.githooks/`, whose `pre-push` hook runs
+  the typecheck and all tests. A failure blocks the push. (Needs the local test database.)
+- **On GitHub:** `.github/workflows/ci.yml` runs typecheck, tests (with its own Postgres) and
+  the build on every push to `development` and `main`, and on pull requests.
+- **On Railway:** turn on *Wait for CI* for the service (Settings), so a commit whose GitHub
+  checks fail is never deployed.
+
 ## Performance
 
 ```bash

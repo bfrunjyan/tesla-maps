@@ -7,6 +7,15 @@ import { resetRateLimits } from '../lib/rateLimit.ts'
 export async function resetDatabase() {
   const name = new URL(config.databaseUrl).pathname.slice(1)
   if (!name.endsWith('_test')) throw new Error(`Refusing to reset non-test database "${name}"`)
+  try {
+    await sql`SELECT 1`
+  } catch (err) {
+    throw new Error(
+      `Test database not reachable (${(err as { code?: string }).code ?? (err as Error).message}). Start it with:\n` +
+        '  docker run -d --rm --name teslamaps-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=teslamaps -p 54340:5432 postgres:16\n' +
+        '  docker exec teslamaps-db psql -U postgres -c "CREATE DATABASE teslamaps_test"',
+    )
+  }
   await sql.unsafe('DROP SCHEMA public CASCADE; CREATE SCHEMA public;')
   await migrate()
   resetRateLimits()

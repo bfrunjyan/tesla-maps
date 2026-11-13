@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:api": "vitest run --project api",
-    "perf": "node scripts/perf-drive.mjs"
+    "perf": "node scripts/perf-drive.mjs",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@fontsource-variable/montserrat": "^5.3.0",
