@@ -4,6 +4,7 @@ import { reverseGeocode } from '../services/search'
 import { fetchRoute } from '../services/routing'
 import { useStore } from '../state/store'
 import type { Place, Position } from '../types'
+import { rawHeading, smoothHeading } from './heading'
 import { computeProgress } from './progress'
 
 /** Republic Square, Yerevan: used until (or unless) the browser gives us a GPS fix. */
@@ -89,21 +90,39 @@ async function reroute(pos: Position) {
 let lastArea: LngLat | null = null
 let areaAbort: AbortController | null = null
 
-export function onPosition(pos: Position, source: 'gps' | 'fallback' | 'sim') {
+let headingAnchor: LngLat | null = null
+
+export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
   const s = get()
-  // Derive heading from movement when the device doesn't report one.
   const prev = s.position
-  if (pos.heading == null && prev) {
-    const moved = distance([prev.lon, prev.lat], [pos.lon, pos.lat])
-    pos = { ...pos, heading: moved > 3 ? bearing([prev.lon, prev.lat], [pos.lon, pos.lat]) : prev.heading }
+  const nav = s.nav
+  const route = nav?.route && nav.status !== 'arrived' ? nav.route : null
+  // Match to the route first: on route, the road's direction is the steadiest heading.
+  const progress = route ? computeProgress(route, [fix.lon, fix.lat], nav?.progress?.segIndex ?? 0) : null
+  let routeBearing: number | null = null
+  if (route && progress && progress.offRouteM < 20) {
+    const a = route.coords[progress.segIndex]
+    const b = route.coords[Math.min(progress.segIndex + 1, route.coords.length - 1)]
+    if (distance(a, b) > 1) routeBearing = bearing(a, b)
   }
+  // Movement is measured from where the heading was last set, so a slow crawl
+  // around a corner still adds up to a direction.
+  const here: LngLat = [fix.lon, fix.lat]
+  headingAnchor ??= here
+  const raw = rawHeading({
+    gpsHeading: fix.heading,
+    speed: fix.speed,
+    moved: distance(headingAnchor, here),
+    movedBearing: bearing(headingAnchor, here),
+    accuracy: fix.accuracy,
+    routeBearing,
+  })
+  if (raw != null) headingAnchor = here
+  const pos = { ...fix, heading: smoothHeading(prev?.heading ?? null, raw, fix.speed) }
   s.set({ position: pos, positionSource: source })
   updateAreaLabel(pos)
 
-  const nav = s.nav
-  if (!nav?.route || nav.status === 'arrived') return
-  const route = nav.route
-  const progress = computeProgress(route, [pos.lon, pos.lat], nav.progress?.segIndex ?? 0)
+  if (!route || !progress || !nav) return
 
   if (progress.remainingM < ARRIVE_M) {
     s.set({ nav: { ...nav, progress, status: 'arrived' } })
@@ -207,7 +226,7 @@ export function startWatching() {
         {
           lon: p.coords.longitude,
           lat: p.coords.latitude,
-          heading: h != null && !Number.isNaN(h) && (p.coords.speed ?? 0) > 0.8 ? h : null,
+          heading: h != null && !Number.isNaN(h) ? h : null,
           speed: p.coords.speed ?? 0,
           accuracy: p.coords.accuracy,
           ts: p.timestamp,

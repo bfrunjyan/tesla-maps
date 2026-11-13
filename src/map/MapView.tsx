@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 // Bundle MapLibre's worker as its own file so production builds can load it.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { lerpAngle, lerpLngLat, type LngLat } from '../lib/geo'
+import { angleDiff } from '../nav/heading'
 import { FALLBACK_CENTER } from '../nav/controller'
 import { reverseGeocode } from '../services/search'
 import { useStore } from '../state/store'
@@ -94,7 +95,8 @@ export function MapView() {
     let lastHeading = 0
     function cameraFor(pos: Position) {
       const s = useStore.getState()
-      if (pos.heading != null) lastHeading = pos.heading
+      // Dead zone: tiny heading changes don't rotate the map (the arrow still turns).
+      if (pos.heading != null && Math.abs(angleDiff(lastHeading, pos.heading)) >= 3) lastHeading = pos.heading
       const navigating = !!s.nav?.route
       const h = map.getContainer().clientHeight
       const zoom = navigating ? 17.2 - Math.min(1.6, pos.speed / 15) : Math.max(map.getZoom(), 15.5)
