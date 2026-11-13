@@ -127,6 +127,15 @@ data, `src/nav/energy.ts`), tagged Fastest / Shortest / Economy. Fastest is pre-
 starts after 10 s unless the driver touches the screen. Rerouting keeps the chosen
 preference (fastest or shortest). Travel times don't include live traffic.
 
+## Leaving the route
+
+When the driver takes another way, Mapic plans a new route to the same destination from
+where the car is, in the direction it is moving (`src/nav/offRoute.ts`). It notices when the
+car is a little off the route and heading elsewhere (about 2 s after a turn), well off the
+route whatever its direction (35 m plus GPS allowance), or driving the route backwards.
+Guidance continues on the old route until the new one arrives. A request that takes over
+12 s is dropped and tried again; at most one new route every 8 s.
+
 ## Zoom while navigating
 
 During guidance the map zooms itself (`src/map/camera.ts`): a wider view between turns that

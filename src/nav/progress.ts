@@ -4,14 +4,19 @@ import type { NavProgress, Route } from '../types'
 /**
  * Snap a position to the route and work out what comes next.
  * Searches a window ahead of the last known segment so the car can't jump
- * back to an earlier part of a route that loops near itself.
+ * back to an earlier part of a route that loops near itself, and (given the last
+ * distance along and how far the car could have moved) not too far forward either.
  */
-export function computeProgress(route: Route, pos: LngLat, lastSeg = 0): NavProgress {
+export function computeProgress(route: Route, pos: LngLat, lastSeg = 0, lastAlongM?: number, maxAheadM = Infinity): NavProgress {
   const { coords, cum, maneuvers } = route
   const from = Math.max(0, lastSeg - 3)
   const to = Math.min(coords.length - 1, lastSeg + 400)
+  // Only as far ahead as the car could have driven since the last fix, so a later
+  // stretch of the route that passes close by can't capture a car that turned off.
+  const reach = lastAlongM == null ? Infinity : lastAlongM + maxAheadM
   let best = { seg: from, t: 0, dist: Infinity, point: coords[from] as LngLat }
   for (let i = from; i < to; i++) {
+    if (i > from && cum[i] > reach) break
     const r = projectOnSegment(pos, coords[i], coords[i + 1])
     if (r.dist < best.dist) best = { seg: i, t: r.t, dist: r.dist, point: r.point }
   }

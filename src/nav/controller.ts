@@ -7,20 +7,22 @@ import type { NavProgress, Place, Position, Route } from '../types'
 import { vehicleSpec } from '../vehicle/catalog'
 import { whToPct } from './battery'
 import { baseWhPerKm } from './energy'
-import { rawHeading, smoothHeading } from './heading'
+import { angleDiff, rawHeading, smoothHeading } from './heading'
+import { courseOf, createOffRouteDetector, maxAheadM } from './offRoute'
 import { computeProgress } from './progress'
 
 /** Republic Square, Yerevan: used until (or unless) the browser gives us a GPS fix. */
 export const FALLBACK_CENTER = { lon: 44.5126, lat: 40.1777 }
 
-const OFF_ROUTE_M = 45
-const OFF_ROUTE_FIXES = 3
 const REROUTE_COOLDOWN_MS = 8000
+/** A recalculation that takes longer than this is dropped, so the next one can start. */
+const REROUTE_TIMEOUT_MS = 12_000
 const ARRIVE_M = 25
 
 let routeAbort: AbortController | null = null
-let offRouteCount = 0
+const offRoute = createOffRouteDetector()
 let lastRerouteAt = 0
+let rerouteFailed = false
 let spoken = new Set<string>()
 let arrivedTimer: number | undefined
 
@@ -69,7 +71,9 @@ export function goWithRoute(index?: number) {
   const s = get()
   const from = s.position ?? { ...FALLBACK_CENTER, heading: null }
   spoken = new Set()
-  offRouteCount = 0
+  offRoute.reset()
+  lastRerouteAt = 0
+  rerouteFailed = false
   const route = option.route
   const progress = computeProgress(route, [from.lon, from.lat])
   s.set({ nav: { destination: nav.destination, route, progress, status: 'active' }, follow: true })
@@ -84,27 +88,45 @@ export function endNavigation() {
   get().set({ nav: null, turnListOpen: false })
 }
 
-async function reroute(pos: Position) {
+/**
+ * The driver left the route: plan a new one from where the car is, heading the way it
+ * is actually moving, to the same destination. Guidance carries on with the old route
+ * until the new one arrives.
+ */
+async function reroute(pos: Position, course: number | null) {
   const nav = get().nav
   if (!nav || nav.status === 'rerouting') return
   lastRerouteAt = Date.now()
-  offRouteCount = 0
+  offRoute.reset()
   get().set({ nav: { ...nav, status: 'rerouting' } })
   routeAbort?.abort()
-  routeAbort = new AbortController()
+  const abort = new AbortController()
+  routeAbort = abort
+  // Never wait forever on a slow connection: a hung request would block every later recalculation.
+  const timer = window.setTimeout(() => abort.abort(), REROUTE_TIMEOUT_MS)
   try {
     // Keep the driver's choice (fastest or shortest) when recalculating.
-    const route = await fetchRoute(pos, nav.destination, get().lang, routeAbort.signal, nav.route?.preference ?? 'fastest')
-    spoken = new Set()
-    const progress = computeProgress(route, [pos.lon, pos.lat])
+    const from = { lon: pos.lon, lat: pos.lat, heading: course ?? pos.heading }
+    const route = await fetchRoute(from, nav.destination, get().lang, abort.signal, nav.route?.preference ?? 'fastest')
     const cur = get().nav
-    if (!cur) return
+    if (!cur || routeAbort !== abort) return
+    spoken = new Set()
+    rerouteFailed = false
+    // Match the car where it is now: it kept moving while the route was being planned.
+    const now = get().position ?? pos
+    const progress = computeProgress(route, [now.lon, now.lat])
     get().set({ nav: { ...cur, route, progress, status: 'active' } })
     speak(route.maneuvers[0]?.verbalPre, route.lang)
     spoken.add('0:pre')
   } catch {
+    if (routeAbort !== abort) return // ended, or replaced by a newer request
     const cur = get().nav
-    if (cur) get().set({ nav: { ...cur, status: 'active' } })
+    if (cur?.status === 'rerouting') get().set({ nav: { ...cur, status: 'active' } })
+    // Still off the route: the detector fires again after the cooldown. Say so once.
+    if (cur && !rerouteFailed) get().showToast('Couldn’t update the route. Trying again.')
+    rerouteFailed = true
+  } finally {
+    window.clearTimeout(timer)
   }
 }
 
@@ -148,17 +170,33 @@ export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
   const prev = s.position
   const nav = s.nav
   const route = nav?.route && nav.status !== 'arrived' ? nav.route : null
-  // Match to the route first: on route, the road's direction is the steadiest heading.
-  const progress = route ? computeProgress(route, [fix.lon, fix.lat], nav?.progress?.segIndex ?? 0) : null
-  let routeBearing: number | null = null
-  if (route && progress && progress.offRouteM < 20) {
+  const here: LngLat = [fix.lon, fix.lat]
+  // The direction the car is really moving, independent of the route.
+  const before: LngLat | null = prev ? [prev.lon, prev.lat] : null
+  const course = courseOf({
+    gpsHeading: fix.heading,
+    speed: fix.speed,
+    moved: before ? distance(before, here) : 0,
+    movedBearing: before ? bearing(before, here) : 0,
+    accuracy: fix.accuracy,
+  })
+  // Match to the route: on route, the road's direction is the steadiest heading.
+  const last = nav?.progress
+  const progress = route
+    ? computeProgress(route, here, last?.segIndex ?? 0, last?.alongM, maxAheadM(fix.speed, prev ? fix.ts - prev.ts : 1000, fix.accuracy))
+    : null
+  /** Direction of the route where the car is matched. */
+  let segBearing: number | null = null
+  if (route && progress) {
     const a = route.coords[progress.segIndex]
     const b = route.coords[Math.min(progress.segIndex + 1, route.coords.length - 1)]
-    if (distance(a, b) > 1) routeBearing = bearing(a, b)
+    if (distance(a, b) > 1) segBearing = bearing(a, b)
   }
+  // The road's direction steadies the arrow, but only while the car is going that way.
+  const withRoute = segBearing != null && progress!.offRouteM < 20 && (course == null || Math.abs(angleDiff(segBearing, course)) < 90)
+  const routeBearing = withRoute ? segBearing : null
   // Movement is measured from where the heading was last set, so a slow crawl
   // around a corner still adds up to a direction.
-  const here: LngLat = [fix.lon, fix.lat]
   headingAnchor ??= here
   const raw = rawHeading({
     gpsHeading: fix.heading,
@@ -185,13 +223,14 @@ export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
     return
   }
 
-  // Off-route detection with tolerance for GPS noise.
-  const tolerance = OFF_ROUTE_M + Math.min(pos.accuracy, 40)
-  offRouteCount = progress.offRouteM > tolerance ? offRouteCount + 1 : 0
-  if (offRouteCount >= OFF_ROUTE_FIXES && Date.now() - lastRerouteAt > REROUTE_COOLDOWN_MS) {
-    s.set({ nav: { ...nav, progress } })
-    reroute(pos)
-    return
+  // Left the route (turned off it, drifted far from it, or driving it backwards)?
+  if (source !== 'fallback' && nav.status !== 'rerouting') {
+    const reason = offRoute.check({ ts: fix.ts, offRouteM: progress.offRouteM, accuracy: fix.accuracy, speed: fix.speed, course, routeBearing: segBearing })
+    if (reason && Date.now() - lastRerouteAt > REROUTE_COOLDOWN_MS) {
+      s.set({ nav: { ...nav, progress } })
+      reroute(pos, course)
+      return
+    }
   }
 
   s.set({ nav: { ...nav, progress } })
