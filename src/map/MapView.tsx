@@ -10,7 +10,7 @@ import { reverseGeocode } from '../services/search'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { applyLook, buildStyle, ROUTE, setTrafficVisible, trafficTileUrl } from './style'
-import { followZoom, zoomForTrafficToggle } from './camera'
+import { followZoom } from './camera'
 import { setMap } from './mapApi'
 import { gpuName, isSlowGpu, watchFrameRate } from './performance'
 
@@ -101,21 +101,13 @@ export function MapView() {
 
     /* ------------------------------------------------------- camera */
     let lastHeading = 0
-    let pendingZoom: number | null = null
-    map.on('zoomend', () => {
-      if (pendingZoom != null && Math.abs(map.getZoom() - pendingZoom) < 0.05) pendingZoom = null
-    })
-    map.on('zoomstart', (e) => {
-      if (e.originalEvent) pendingZoom = null // the driver zoomed by hand: respect it
-    })
     function cameraFor(pos: Position) {
       const s = useStore.getState()
       // Dead zone: tiny heading changes don't rotate the map (the arrow still turns).
       if (pos.heading != null && Math.abs(angleDiff(lastHeading, pos.heading)) >= 3) lastHeading = pos.heading
       const navigating = !!s.nav?.route
       const h = map.getContainer().clientHeight
-      // A pending zoom (traffic toggled, trip ended) wins until reached, so per-fix camera moves don't cut it short.
-      const zoom = !navigating && pendingZoom != null ? pendingZoom : followZoom({ navigating, speed: pos.speed, showTraffic: s.showTraffic, current: map.getZoom() })
+      const zoom = followZoom({ navigating, speed: pos.speed, current: map.getZoom() })
       return {
         center: [pos.lon, pos.lat] as LngLat,
         bearing: s.northUp ? 0 : lastHeading,
@@ -178,6 +170,18 @@ export function MapView() {
         st.showToast(`Switched to the lite map for smoother driving (${fps} fps)`)
       })
     }
+
+    // Traffic tiles refused (e.g. the Mapbox token isn't allowed on this site): say so once.
+    let trafficErrorShown = false
+    map.on('error', (e) => {
+      const ev = e as unknown as { sourceId?: string; error?: { status?: number } }
+      if (ev.sourceId !== 'traffic' || trafficErrorShown) return
+      const status = ev.error?.status
+      if (status !== 401 && status !== 403) return
+      trafficErrorShown = true
+      if (useStore.getState().showTraffic) useStore.getState().showToast('Traffic couldn’t load: the map key isn’t allowed on this site')
+      console.warn(`[traffic] tiles refused (${status}). Add this site's URL to the Mapbox token.`)
+    })
 
     map.on('load', () => {
       ensureRouteLayers()
@@ -282,13 +286,6 @@ export function MapView() {
         follow({ ...p, lon: at[0], lat: at[1] }, first ? 0 : 1000)
       }
       if (s.follow && !prev.follow && s.position) follow(s.position, 600)
-      // Traffic on → zoom out to see nearby jams; off → back to street level. Same when a trip ends.
-      const trafficToggled = s.showTraffic !== prev.showTraffic
-      const tripEnded = !!prev.nav && !s.nav
-      if ((trafficToggled || (tripEnded && s.showTraffic)) && !s.nav && s.follow && s.position) {
-        pendingZoom = zoomForTrafficToggle(s.showTraffic)
-        follow(s.position, 800)
-      }
       if ((s.northUp !== prev.northUp || s.nav?.route !== prev.nav?.route) && s.position) follow(s.position, 600)
       if (s.northUp !== prev.northUp && !s.follow) map.easeTo({ bearing: s.northUp ? 0 : map.getBearing(), pitch: s.northUp ? 0 : 55, duration: 500 })
       if (

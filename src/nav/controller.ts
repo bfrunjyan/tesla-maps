@@ -251,7 +251,10 @@ export function startWatching() {
   window.clearInterval(healthTimer)
   healthTimer = window.setInterval(() => {
     const { gps } = get()
-    if ((gps === 'ok' || gps === 'weak') && !sim.running && Date.now() - lastFixAt > LOST_AFTER_MS) get().set({ gps: 'lost' })
+    // Only while moving: browsers often stop sending updates when the position doesn't change,
+    // so silence from a parked car (or a laptop on a desk) is normal, not a lost signal.
+    const moving = (get().position?.speed ?? 0) > 1.5
+    if ((gps === 'ok' || gps === 'weak') && moving && !sim.running && Date.now() - lastFixAt > LOST_AFTER_MS) get().set({ gps: 'lost' })
   }, 3000)
 }
 
