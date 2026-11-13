@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bearing, cardinal, decodePolyline6, distance, formatDistance, formatDuration, lerpAngle, projectOnSegment } from './geo'
+import { bearing, cardinal, decodePolyline6, distance, formatClock, formatDistance, formatDuration, lerpAngle, projectOnSegment } from './geo'
 
 /** Encoder for the tests (the app only decodes Valhalla's polyline6). */
 function encode6(points: [number, number][]) {
@@ -63,5 +63,15 @@ describe('geo', () => {
     expect(formatDistance(23400)).toBe('23 km')
     expect(formatDuration(20)).toBe('1 min')
     expect(formatDuration(3720)).toBe('1 hr 2 min')
+  })
+})
+
+describe('formatClock', () => {
+  it('uses the 24-hour clock with two-digit hours and minutes', () => {
+    expect(formatClock(new Date(2026, 10, 14, 1, 26))).toBe('01:26')
+    expect(formatClock(new Date(2026, 10, 14, 9, 5))).toBe('09:05')
+    expect(formatClock(new Date(2026, 10, 14, 13, 0))).toBe('13:00')
+    expect(formatClock(new Date(2026, 10, 14, 23, 59))).toBe('23:59')
+    expect(formatClock(new Date(2026, 10, 15, 0, 0))).toBe('00:00')
   })
 })

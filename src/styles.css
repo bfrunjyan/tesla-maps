@@ -945,7 +945,20 @@ h2, p { margin: 0; }
 .tesla__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .tesla__text .setting__hint { margin: 0; }
 .tesla__state { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
-.tesla__action { min-height: 48px; padding: 0 18px; font-size: 14px; white-space: nowrap; }
+.tesla__action {
+  /* Full width under the text, in Tesla red, so it reads as Tesla's own sign-in. */
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 52px;
+  gap: 10px;
+  background: #e31937;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tesla__action:active { background: #c2152f; }
+.tesla__mark { flex: none; }
 .tesla__actions { display: flex; gap: 8px; }
 .tesla__actions .btn { min-height: 48px; padding: 0 16px; }
 .tesla__cars { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1013,7 +1026,7 @@ h2, p { margin: 0; }
   .models { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .car__hero { grid-template-columns: 1fr; }
   .tesla { grid-template-columns: 1fr; }
-  .tesla__action, .tesla__actions .btn { width: 100%; }
+  .tesla__actions .btn { width: 100%; }
   .charger-filter { min-width: 0; }
 }
 @media (hover: hover) and (pointer: fine) {

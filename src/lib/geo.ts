@@ -76,8 +76,10 @@ export function formatDuration(s: number): string {
   return rest ? `${h} hr ${rest} min` : `${h} hr`
 }
 
+/** 24-hour clock, like the car: "09:05", "21:40". */
 export function formatClock(date: Date): string {
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 /** Decode a Valhalla polyline6 string into [lon, lat] pairs. */
