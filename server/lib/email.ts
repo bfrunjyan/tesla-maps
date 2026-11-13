@@ -1,4 +1,5 @@
 import { config } from '../config.ts'
+import { signInCodeEmail } from './emailTemplates.ts'
 
 /**
  * Sends the sign-in code. Uses Resend when RESEND_API_KEY and EMAIL_FROM are set;
@@ -10,14 +11,16 @@ export async function sendSignInCode(to: string, code: string) {
     console.log(`[email:dev] sign-in code for ${to}: ${code}`)
     return
   }
+  const email = signInCodeEmail(code)
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${config.email.resendApiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: config.email.from,
       to: [to],
-      subject: `${code} is your Mapic sign-in code`,
-      text: `Your sign-in code is ${code}\n\nIt expires in 10 minutes. If you didn't ask for it, you can ignore this email.`,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
     }),
   })
   if (!res.ok) {

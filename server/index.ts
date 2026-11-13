@@ -5,6 +5,7 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { config, emailCodesEnabled, googleEnabled } from './config.ts'
 import { migrate, sql } from './db.ts'
+import { signInCodeEmail } from './lib/emailTemplates.ts'
 import { csrfGuard, loadSession, type AppEnv } from './lib/session.ts'
 import { auth } from './routes/auth.ts'
 import { places } from './routes/places.ts'
@@ -40,6 +41,10 @@ app.use('/api/*', async (c, next) => {
   await next()
   c.header('Cache-Control', 'no-store')
 })
+// Development only: preview email templates in the browser.
+if (!config.production) {
+  app.get('/api/dev/email/sign-in', (c) => c.html(signInCodeEmail('482917').html))
+}
 app.route('/api/auth', auth)
 app.route('/api/places', places)
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404))
