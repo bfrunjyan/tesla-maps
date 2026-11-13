@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "vite --host",
     "dev:api": "node --watch --env-file-if-exists=.env.local server/index.ts",
-    "build": "npm run typecheck && vite build",
+    "build": "npm run typecheck && vite build && node scripts/compress.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "preview": "vite preview --host",
     "start": "node server/index.ts",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
-    "test:api": "vitest run --project api"
+    "test:api": "vitest run --project api",
+    "perf": "node scripts/perf-drive.mjs"
   },
   "dependencies": {
     "@fontsource-variable/montserrat": "^5.3.0",
@@ -33,6 +34,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "puppeteer-core": "^25.17.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^4.1.12"

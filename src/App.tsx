@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react'
-import { AccountSheet } from './components/AccountSheet'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { GuidanceCard } from './components/GuidanceCard'
-import { LinkPage } from './components/LinkPage'
 import { LocationSheet } from './components/Location'
 import { MapControls } from './components/MapControls'
 import { PlaceCard } from './components/PlaceCard'
@@ -10,6 +8,10 @@ import { MapView } from './map/MapView'
 import { initLocation, toggleSimulation } from './nav/controller'
 import { initSession } from './state/session'
 import { useStore } from './state/store'
+
+// Loaded on demand: sign-in screens and the phone link page aren't needed to show the map.
+const AccountSheet = lazy(() => import('./components/AccountSheet').then((m) => ({ default: m.AccountSheet })))
+const LinkPage = lazy(() => import('./components/LinkPage').then((m) => ({ default: m.LinkPage })))
 
 const DEV = new URLSearchParams(location.search).has('dev')
 
@@ -21,7 +23,9 @@ export default function App() {
   if (location.pathname === '/link') {
     return (
       <>
-        <LinkPage />
+        <Suspense fallback={null}>
+          <LinkPage />
+        </Suspense>
         <Toast />
       </>
     )
@@ -35,6 +39,7 @@ function MapApp() {
   const selectedPlace = useStore((s) => s.selectedPlace)
   const areaLabel = useStore((s) => s.areaLabel)
   const closePanel = useStore((s) => s.closePanel)
+  const accountOpen = useStore((s) => s.accountOpen)
 
   useEffect(() => {
     initLocation()
@@ -50,7 +55,11 @@ function MapApp() {
       </div>
       <MapControls />
       {areaLabel && <div className="area-label">{areaLabel}</div>}
-      <AccountSheet />
+      {accountOpen && (
+        <Suspense fallback={null}>
+          <AccountSheet />
+        </Suspense>
+      )}
       <LocationSheet />
       <Toast />
       {DEV && <DevBar />}

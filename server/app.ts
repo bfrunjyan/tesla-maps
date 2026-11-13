@@ -59,6 +59,8 @@ app.use(
   '*',
   serveStatic({
     root: './dist',
+    // Sends dist/*.br or *.gz (made at build time) when the browser accepts them.
+    precompressed: true,
     onFound: (path, c) => {
       c.header('Cache-Control', path.includes('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache')
     },

@@ -32,6 +32,26 @@ API tests need the local Postgres container from above and use a separate `tesla
 database (created once with `docker exec teslamaps-db psql -U postgres -c "CREATE DATABASE teslamaps_test"`).
 They wipe it on every run and refuse to touch any database whose name doesn't end in `_test`.
 
+## Performance
+
+```bash
+npm run build && PORT=8899 APP_URL=http://localhost:8899 node server/index.ts &
+npm run perf                    # frame rate during a simulated drive: full/lite × CPU 1x/4x
+npm run perf -- --gpu=software  # same, with WebGL on the CPU (harsh stand-in for a weak car GPU)
+npm run perf -- --memory        # memory over one complete simulated drive
+```
+
+Measured 2026-11-13 (M3 Pro; software rendering for the worst case):
+
+| | Full map | Lite map |
+|---|---|---|
+| Real GPU, CPU 1x / 4x | 60 / 60 fps | 60 / 60 fps |
+| Software GPU, CPU 1x / 4x | 20 / 20 fps, 31 % janky frames at 4x | 30 / 30 fps, 12 % at 4x |
+
+Memory over a 3-minute drive: 14.3 → 14.4 MB heap, steady DOM nodes and listeners.
+First load: ~464 KB (Brotli; was 2.1 MB uncompressed). After a deploy only the app chunk
+(~35 KB) is new; MapLibre and React stay cached.
+
 ## Accounts
 
 Drivers can sign in four ways; Home, Work, favorites and recent destinations then sync
