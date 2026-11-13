@@ -9,7 +9,10 @@
     "build": "npm run typecheck && vite build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "preview": "vite preview --host",
-    "start": "node server/index.ts"
+    "start": "node server/index.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:api": "vitest run --project api"
   },
   "dependencies": {
     "@fontsource-variable/montserrat": "^5.3.0",
@@ -31,7 +34,8 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.8"
+    "vite": "^8.3.8",
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=22.18"

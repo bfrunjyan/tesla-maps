@@ -20,6 +20,18 @@ npm run dev                    # web app on :5174, proxies /api to the API
 Add `?dev` to the URL for the test bar (simulated drive, voice language).
 Without an email provider, sign-in codes are printed in the `dev:api` terminal.
 
+## Tests
+
+```bash
+npm test            # everything (unit + API)
+npm run test:unit   # app logic: heading smoothing, lite-mode detection, route progress, geo maths, sunrise/sunset
+npm run test:api    # server: all sign-in methods, takeover protection, QR pairing, saved places, CSRF, rate limits
+```
+
+API tests need the local Postgres container from above and use a separate `teslamaps_test`
+database (created once with `docker exec teslamaps-db psql -U postgres -c "CREATE DATABASE teslamaps_test"`).
+They wipe it on every run and refuse to touch any database whose name doesn't end in `_test`.
+
 ## Accounts
 
 Drivers can sign in four ways; Home, Work, favorites and recent destinations then sync

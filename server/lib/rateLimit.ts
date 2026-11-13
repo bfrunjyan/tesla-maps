@@ -8,6 +8,11 @@ import { config } from '../config.ts'
  */
 const buckets = new Map<string, { count: number; resetAt: number }>()
 
+/** Tests only: start from empty limits. */
+export function resetRateLimits() {
+  buckets.clear()
+}
+
 export function hit(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now()
   const b = buckets.get(key)
