@@ -178,15 +178,15 @@ function useOrigin() {
 
 function SearchResults({ query }: { query: string }) {
   const origin = useOrigin()
-  const [state, setState] = useState<{ status: 'loading' | 'done' | 'error'; places: Place[] }>({ status: 'loading', places: [] })
+  const [state, setState] = useState<{ status: 'loading' | 'done' | 'error'; nearby: Place[]; further: Place[] }>({ status: 'loading', nearby: [], further: [] })
 
   useEffect(() => {
     const ctrl = new AbortController()
     setState((s) => ({ ...s, status: 'loading' }))
     const t = window.setTimeout(() => {
       searchPlaces(query, origin, ctrl.signal)
-        .then((places) => setState({ status: 'done', places }))
-        .catch(() => !ctrl.signal.aborted && setState({ status: 'error', places: [] }))
+        .then((r) => setState({ status: 'done', ...r }))
+        .catch(() => !ctrl.signal.aborted && setState({ status: 'error', nearby: [], further: [] }))
     }, 220)
     return () => {
       window.clearTimeout(t)
@@ -195,8 +195,19 @@ function SearchResults({ query }: { query: string }) {
   }, [query, origin])
 
   if (state.status === 'error') return <p className="empty">Search is unavailable right now. Check your connection.</p>
-  if (state.status === 'done' && !state.places.length) return <p className="empty">No results for “{query}”.</p>
-  return <PlaceList places={state.places} loading={state.status === 'loading'} />
+  if (state.status === 'done' && !state.nearby.length && !state.further.length) return <p className="empty">No results for “{query}”.</p>
+  return (
+    <div className="results">
+      {state.status === 'done' && !state.nearby.length && <p className="results__note">Nothing called “{query}” nearby.</p>}
+      <PlaceList places={state.nearby} loading={state.status === 'loading'} />
+      {state.further.length > 0 && (
+        <>
+          <h3 className="results__heading">Further away</h3>
+          <PlaceList places={state.further} />
+        </>
+      )}
+    </div>
+  )
 }
 
 const categoryCache = new Map<string, Place[]>()

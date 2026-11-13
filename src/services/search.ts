@@ -51,23 +51,61 @@ function photonToPlace(f: { properties: PhotonProps; geometry: { coordinates: [n
   }
 }
 
-export async function searchPlaces(q: string, near: { lon: number; lat: number }, signal?: AbortSignal): Promise<Place[]> {
+/** Search radius treated as "nearby" (km). */
+export const NEARBY_KM = 60
+const FURTHER_MAX = 5
+
+/** Bounding box [minLon, minLat, maxLon, maxLat] about `km` around a point. */
+export function nearbyBox(near: { lon: number; lat: number }, km = NEARBY_KM): [number, number, number, number] {
+  const dLat = km / 111
+  const dLon = km / (111 * Math.cos((near.lat * Math.PI) / 180))
+  return [near.lon - dLon, near.lat - dLat, near.lon + dLon, near.lat + dLat]
+}
+
+const placeKey = (p: Place) => `${p.name.toLowerCase()}|${p.address.toLowerCase()}`
+
+function dedupe(list: Place[]) {
+  const seen = new Set<string>()
+  return list.filter((p) => !seen.has(placeKey(p)) && (seen.add(placeKey(p)), true))
+}
+
+/**
+ * Nearby results first (in the provider's relevance order); results from elsewhere
+ * go in a separate "Further away" group, only when there are few nearby, at most 5.
+ */
+export function mergeResults(local: Place[], global: Place[], near: { lon: number; lat: number }) {
+  const nearby = dedupe(local)
+  if (nearby.length >= 8) return { nearby, further: [] as Place[] }
+  const taken = new Set(nearby.map(placeKey))
+  const nearKm = (p: Place) => {
+    const dLat = ((p.lat - near.lat) * Math.PI) / 180
+    const dLon = ((p.lon - near.lon) * Math.PI) / 180
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos((near.lat * Math.PI) / 180) * Math.cos((p.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2
+    return 12742 * Math.asin(Math.sqrt(a))
+  }
+  const further = dedupe(global)
+    .filter((p) => !taken.has(placeKey(p)) && nearKm(p) > NEARBY_KM)
+    .slice(0, FURTHER_MAX)
+  return { nearby, further }
+}
+
+async function photon(params: Record<string, string>, signal?: AbortSignal): Promise<Place[]> {
   const url = new URL(`${PHOTON}/api/`)
-  url.searchParams.set('q', q)
-  url.searchParams.set('lat', String(near.lat))
-  url.searchParams.set('lon', String(near.lon))
-  url.searchParams.set('limit', '12')
-  url.searchParams.set('location_bias_scale', '0.4')
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
   const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`Search failed (${res.status})`)
   const data = await res.json()
-  const seen = new Set<string>()
-  return (data.features ?? []).map(photonToPlace).filter((p: Place) => {
-    const k = `${p.name}|${p.address}`
-    if (seen.has(k)) return false
-    seen.add(k)
-    return true
-  })
+  return (data.features ?? []).map(photonToPlace)
+}
+
+/** Searches the area around the car and, in parallel, everywhere (for "Further away"). */
+export async function searchPlaces(q: string, near: { lon: number; lat: number }, signal?: AbortSignal) {
+  const [local, global] = await Promise.allSettled([
+    photon({ q, bbox: nearbyBox(near).join(','), limit: '12' }, signal),
+    photon({ q, lat: String(near.lat), lon: String(near.lon), limit: '10' }, signal),
+  ])
+  if (local.status === 'rejected' && global.status === 'rejected') throw local.reason
+  return mergeResults(local.status === 'fulfilled' ? local.value : [], global.status === 'fulfilled' ? global.value : [], near)
 }
 
 export async function reverseGeocode(lon: number, lat: number, signal?: AbortSignal): Promise<{ place: Place; area: string } | null> {

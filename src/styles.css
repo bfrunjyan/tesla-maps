@@ -743,3 +743,18 @@ h2, p { margin: 0; }
   .gps-chip { width: 60px; padding: 0; justify-content: center; }
   .gps-chip span:last-child { display: none; }
 }
+
+/* Search results: nearby first, then a quieter "Further away" group. */
+.results { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.results .list { overflow: visible; }
+.results__note { margin: 0; padding: 14px 18px 4px; font-size: 14px; color: var(--text-muted); }
+.results__heading {
+  margin: 0;
+  padding: 14px 18px 6px;
+  border-top: 1px solid var(--divider);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
