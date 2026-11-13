@@ -20,5 +20,9 @@ export async function sendSignInCode(to: string, code: string) {
       text: `Your sign-in code is ${code}\n\nIt expires in 10 minutes. If you didn't ask for it, you can ignore this email.`,
     }),
   })
-  if (!res.ok) throw new Error(`Email provider error ${res.status}`)
+  if (!res.ok) {
+    // Resend explains the problem (unverified domain, bad key, invalid "from") in the body.
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Resend ${res.status}: ${detail.slice(0, 300)}`)
+  }
 }
