@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { CloudSun, Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal, UserCircle } from '@phosphor-icons/react'
+import { Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal, UserCircle } from '@phosphor-icons/react'
 import { cardinal } from '../lib/geo'
 import { mapCenter } from '../map/mapApi'
 import { trafficTileUrl } from '../map/style'
@@ -104,9 +104,6 @@ export function MapControls() {
           </Tool>
           <Tool label="Show charging stations" active={showChargers} onClick={toggleChargers}>
             <Lightning size={24} />
-          </Tool>
-          <Tool label="Weather" onClick={() => s.showToast('Weather isn’t available yet')}>
-            <CloudSun size={24} />
           </Tool>
           <Tool label="3D buildings" active={threeD} onClick={() => s.set({ threeD: !threeD })}>
             <Cube size={24} />
