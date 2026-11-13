@@ -61,6 +61,15 @@ Memory over a 3-minute drive: 14.3 → 14.4 MB heap, steady DOM nodes and listen
 First load: ~464 KB (Brotli; was 2.1 MB uncompressed). After a deploy only the app chunk
 (~35 KB) is new; MapLibre and React stay cached.
 
+## Route choices
+
+Picking a destination shows up to 3 routes before guidance starts: the fastest, up to two
+alternatives (Valhalla `alternates`) and the shortest. Each shows time, distance and an
+estimated battery use (distance and speed plus climbs from the routing server's elevation
+data, `src/nav/energy.ts`), tagged Fastest / Shortest / Economy. Fastest is pre-selected and
+starts after 10 s unless the driver touches the screen. Rerouting keeps the chosen
+preference (fastest or shortest). Travel times don't include live traffic.
+
 ## Accounts
 
 Drivers can sign in four ways; Home, Work, favorites and recent destinations then sync

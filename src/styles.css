@@ -767,3 +767,45 @@ h2, p { margin: 0; }
 .rename { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
 .rename__input { min-height: 48px; font-size: 16px; font-weight: 600; }
 .place-card__titles .rename { margin-top: 6px; }
+
+/* ------------------------------------------------------- route preview */
+.route-preview { padding: 6px 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.route-preview__head { display: flex; align-items: flex-start; gap: 4px; padding-left: 6px; }
+.route-preview__titles { flex: 1; min-width: 0; padding-top: 10px; }
+.route-preview__label { font-size: 12px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.route-preview__dest { margin: 2px 0 0; font-size: 19px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.route-options { display: flex; flex-direction: column; gap: 6px; }
+.route-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border: 2px solid transparent;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms var(--ease-out);
+}
+.route-option:active { transform: scale(0.98); }
+.route-option[aria-checked='true'] { border-color: var(--accent); background: var(--surface); }
+.route-option__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.route-option__time { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.route-option__meta { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.route-option__side { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 50%; }
+.route-option__extra { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.tag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--active-bg);
+  color: var(--text);
+}
+.tag[data-tag='Fastest'] { background: rgba(62, 106, 225, 0.18); color: var(--accent); }
+.tag[data-tag='Economy'] { background: rgba(47, 179, 109, 0.18); color: #2fb36d; }
+:root[data-theme='dark'] .tag[data-tag='Fastest'] { color: #8fb0ff; }
+.route-preview__note { margin: 0; padding: 0 4px; font-size: 12px; line-height: 1.4; color: var(--text-faint); }
+.route-preview__go { min-height: 56px; font-size: 16px; }
+.route-preview__count { font-variant-numeric: tabular-nums; opacity: 0.85; }

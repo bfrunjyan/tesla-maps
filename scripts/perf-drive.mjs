@@ -38,6 +38,9 @@ async function startDrive(detail) {
   await page.type('.search-pill__input', 'Cascade')
   await page.waitForFunction(() => [...document.querySelectorAll('.row')].some((r) => r.textContent?.includes('Tamanyan')), { timeout: 20000 })
   await page.evaluate(() => [...document.querySelectorAll('.row')].find((r) => r.textContent?.includes('Tamanyan'))?.click())
+  // Route preview: start the pre-selected (fastest) route.
+  await page.waitForSelector('.route-preview__go', { timeout: 30000 })
+  await page.click('.route-preview__go')
   await page.waitForSelector('.guide__next', { timeout: 20000 })
   await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent?.includes('Simulate drive'))?.click())
   await new Promise((r) => setTimeout(r, 3000)) // let the camera settle into follow mode

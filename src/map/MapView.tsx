@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
+import type { ExpressionSpecification } from 'maplibre-gl'
 import { AttributionControl, Map as MLMap, Marker, setWorkerUrl, type GeoJSONSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 // Bundle MapLibre's worker as its own file so production builds can load it.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { lerpAngle, lerpLngLat, type LngLat } from '../lib/geo'
 import { angleDiff } from '../nav/heading'
-import { FALLBACK_CENTER } from '../nav/controller'
+import { FALLBACK_CENTER, selectRoute } from '../nav/controller'
 import { reverseGeocode } from '../services/search'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
@@ -125,6 +126,37 @@ export function MapView() {
     /* -------------------------------------------------- route layers */
     function ensureRouteLayers() {
       if (map.getSource('route')) return
+      // Route choices in the preview: others grey (tap to pick), the selected one blue.
+      map.addSource('route-options', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      const optionWidth: ExpressionSpecification = ['interpolate', ['exponential', 1.6], ['zoom'], 10, 4, 16, 10, 20, 40]
+      map.addLayer({
+        id: 'route-opt-alt-casing',
+        type: 'line',
+        source: 'route-options',
+        filter: ['!=', ['get', 'selected'], true],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#1f2023', 'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 10, 7, 16, 15, 20, 52] },
+      }, 'road-label')
+      map.addLayer({
+        id: 'route-opt-alt',
+        type: 'line',
+        source: 'route-options',
+        filter: ['!=', ['get', 'selected'], true],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#b9bcc2', 'line-width': optionWidth },
+      }, 'road-label')
+      map.addLayer({
+        id: 'route-opt-sel',
+        type: 'line',
+        source: 'route-options',
+        filter: ['==', ['get', 'selected'], true],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ROUTE.line, 'line-width': optionWidth },
+      }, 'road-label')
+      map.on('click', 'route-opt-alt-casing', (e) => {
+        const i = e.features?.[0]?.properties?.index
+        if (typeof i === 'number') selectRoute(i)
+      })
       map.addSource('route', { type: 'geojson', data: EMPTY_LINE })
       map.addLayer({
         id: 'route-casing',
@@ -152,6 +184,31 @@ export function MapView() {
       const p = nav.progress
       const coords = p ? [p.snapped, ...route.coords.slice(p.segIndex + 1)] : route.coords
       src.setData({ ...EMPTY_LINE, geometry: { type: 'LineString', coordinates: coords } })
+    }
+
+    function drawOptions(fit: boolean) {
+      const src = map.getSource('route-options') as GeoJSONSource | undefined
+      const nav = useStore.getState().nav
+      const options = nav?.status === 'choosing' ? nav.options ?? [] : []
+      // Selected last so it draws on top where routes overlap.
+      const features = options
+        .map((o, index) => ({
+          type: 'Feature' as const,
+          properties: { index, selected: index === nav?.selected },
+          geometry: { type: 'LineString' as const, coordinates: o.route.coords },
+        }))
+        .sort((a, b) => Number(a.properties.selected) - Number(b.properties.selected))
+      src?.setData({ type: 'FeatureCollection', features })
+      if (fit && options.length) {
+        const all = options.flatMap((o) => o.route.coords)
+        const lons = all.map((c) => c[0])
+        const lats = all.map((c) => c[1])
+        const card = document.querySelector('.left-column')?.getBoundingClientRect()
+        map.fitBounds(
+          [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+          { padding: { top: 90, bottom: 60, right: 110, left: (card?.right ?? 0) + 40 }, pitch: 0, bearing: 0, duration: 800, maxZoom: 16 },
+        )
+      }
     }
 
     function applyLayerToggles() {
@@ -305,8 +362,13 @@ export function MapView() {
         else map.once('idle', applyLayerToggles)
       }
 
+      if (s.nav?.options !== prev.nav?.options || s.nav?.selected !== prev.nav?.selected || s.nav?.status !== prev.nav?.status) {
+        drawOptions(s.nav?.options !== prev.nav?.options)
+      }
       if (s.nav?.route !== prev.nav?.route || s.nav?.progress !== prev.nav?.progress) {
-        if (map.isStyleLoaded()) drawRoute()
+        // Always draw: isStyleLoaded() is false while tiles load (e.g. right after
+        // zooming out for the route preview), which used to leave the route undrawn.
+        drawRoute()
       }
       if (s.nav?.destination !== prev.nav?.destination) {
         destMarker?.remove()

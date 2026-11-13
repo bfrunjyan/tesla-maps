@@ -1,7 +1,7 @@
 import { bearing, distance, type LngLat } from '../lib/geo'
 import { cancelSpeech, setVoiceEnabled, speak } from '../lib/voice'
 import { reverseGeocode } from '../services/search'
-import { fetchRoute } from '../services/routing'
+import { fetchRoute, fetchRouteOptions } from '../services/routing'
 import { useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { rawHeading, smoothHeading } from './heading'
@@ -25,34 +25,53 @@ const get = () => useStore.getState()
 
 /* ---------------------------------------------------------------- routing */
 
+/** Picks a destination: fetch route choices and show the preview (fastest pre-selected). */
 export async function startNavigation(dest: Place) {
   const s = get()
   const from = s.position ?? { ...FALLBACK_CENTER, heading: null }
   routeAbort?.abort()
   routeAbort = new AbortController()
   window.clearTimeout(arrivedTimer)
-  spoken = new Set()
-  offRouteCount = 0
   s.addRecent(dest)
   s.set({
     nav: { destination: dest, route: null, progress: null, status: 'routing' },
     panelOpen: false,
     selectedPlace: null,
     query: '',
-    follow: true,
+    follow: false,
     turnListOpen: false,
   })
   try {
-    const route = await fetchRoute(from, dest, s.lang, routeAbort.signal)
-    const progress = computeProgress(route, [from.lon, from.lat])
-    get().set({ nav: { destination: dest, route, progress, status: 'active' } })
-    speak(route.maneuvers[0]?.verbalPre, route.lang)
-    spoken.add('0:pre')
+    const options = await fetchRouteOptions(from, dest, s.lang, routeAbort.signal)
+    if (!options.length) throw new Error('No route found')
+    get().set({ nav: { destination: dest, route: null, progress: null, status: 'choosing', options, selected: 0 } })
   } catch (err) {
     if (routeAbort.signal.aborted) return
     const msg = err instanceof Error ? err.message : 'Routing failed'
     get().set({ nav: { destination: dest, route: null, progress: null, status: 'error', error: msg } })
   }
+}
+
+/** Highlights a route in the preview. */
+export function selectRoute(index: number) {
+  const nav = get().nav
+  if (nav?.status === 'choosing' && nav.options?.[index]) get().set({ nav: { ...nav, selected: index } })
+}
+
+/** "Go": start guidance on the chosen route. */
+export function goWithRoute(index?: number) {
+  const nav = get().nav
+  const option = nav?.options?.[index ?? nav.selected ?? 0]
+  if (!nav || !option) return
+  const s = get()
+  const from = s.position ?? { ...FALLBACK_CENTER, heading: null }
+  spoken = new Set()
+  offRouteCount = 0
+  const route = option.route
+  const progress = computeProgress(route, [from.lon, from.lat])
+  s.set({ nav: { destination: nav.destination, route, progress, status: 'active' }, follow: true })
+  speak(route.maneuvers[0]?.verbalPre, route.lang)
+  spoken.add('0:pre')
 }
 
 export function endNavigation() {
@@ -71,7 +90,8 @@ async function reroute(pos: Position) {
   routeAbort?.abort()
   routeAbort = new AbortController()
   try {
-    const route = await fetchRoute(pos, nav.destination, get().lang, routeAbort.signal)
+    // Keep the driver's choice (fastest or shortest) when recalculating.
+    const route = await fetchRoute(pos, nav.destination, get().lang, routeAbort.signal, nav.route?.preference ?? 'fastest')
     spoken = new Set()
     const progress = computeProgress(route, [pos.lon, pos.lat])
     const cur = get().nav

@@ -3,6 +3,7 @@ import { formatClock, formatDistance, formatDuration } from '../lib/geo'
 import { endNavigation, startNavigation } from '../nav/controller'
 import { useStore } from '../state/store'
 import { ManeuverIcon } from './icons'
+import { RoutePreview } from './RoutePreview'
 
 /** Turn-by-turn card: next maneuver, upcoming turn list, trip summary. */
 export function GuidanceCard() {
@@ -12,6 +13,7 @@ export function GuidanceCard() {
   const favorites = useStore((s) => s.favorites)
   const s = useStore.getState()
   if (!nav) return null
+  if (nav.status === 'choosing') return <RoutePreview />
   const dest = nav.destination
   const fav = favorites.some((f) => f.id === dest.id)
 

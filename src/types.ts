@@ -46,6 +46,12 @@ export interface Route {
   totalM: number
   totalS: number
   lang: string
+  /** How it was planned, so rerouting keeps the driver's choice. */
+  preference?: 'fastest' | 'shortest'
+  climbM?: number
+  descentM?: number
+  /** Estimated battery use (see nav/energy.ts). */
+  kWh?: number
 }
 
 export interface NavProgress {

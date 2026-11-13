@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { load, save } from '../lib/storage'
 import { api, type AuthMethods, type SavedPlaces, type User } from '../services/api'
+import type { RouteOption } from '../nav/routeOptions'
 import type { NavProgress, Place, Position, Route } from '../types'
 
 export type SearchTab = 'recents' | 'favorites' | 'charging' | 'hungry' | 'lucky'
@@ -16,8 +17,11 @@ export interface NavState {
   destination: Place
   route: Route | null
   progress: NavProgress | null
-  status: 'routing' | 'active' | 'rerouting' | 'arrived' | 'error'
+  status: 'routing' | 'choosing' | 'active' | 'rerouting' | 'arrived' | 'error'
   error?: string
+  /** Route choices while status is 'choosing'. */
+  options?: RouteOption[]
+  selected?: number
 }
 
 interface Toast {
