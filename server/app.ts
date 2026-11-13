@@ -4,11 +4,13 @@ import { readFile } from 'node:fs/promises'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { config } from './config.ts'
+import { fakeTesla } from './dev/fakeTesla.ts'
 import { sql } from './db.ts'
 import { signInCodeEmail } from './lib/emailTemplates.ts'
 import { csrfGuard, loadSession, type AppEnv } from './lib/session.ts'
 import { auth } from './routes/auth.ts'
 import { chargers } from './routes/chargers.ts'
+import { tesla } from './routes/tesla.ts'
 import { vehicle } from './routes/vehicle.ts'
 import { places } from './routes/places.ts'
 
@@ -38,6 +40,14 @@ app.get('/api/health', async (c) => {
   await sql`SELECT 1`
   return c.json({ ok: true })
 })
+// Tesla fetches this to recognise the app (Connect Tesla). A public key: safe to publish.
+app.get('/.well-known/appspecific/com.tesla.3p.public-key.pem', (c) => {
+  if (!config.tesla.publicKey) return c.text('Not found', 404)
+  return c.body(`${config.tesla.publicKey}\n`, 200, { 'Content-Type': 'application/x-pem-file', 'Cache-Control': 'public, max-age=3600' })
+})
+// Local development only (TESLA_FAKE=1): a stand-in for Tesla, mounted ahead of the
+// JSON-only guard because it receives form posts like the real token endpoint.
+if (config.tesla.fake) app.route('/api/dev/tesla', fakeTesla)
 app.use('/api/*', csrfGuard, loadSession)
 app.use('/api/*', async (c, next) => {
   await next()
@@ -51,6 +61,7 @@ app.route('/api/auth', auth)
 app.route('/api/places', places)
 app.route('/api/chargers', chargers)
 app.route('/api/vehicle', vehicle)
+app.route('/api/tesla', tesla)
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404))
 
 app.onError((err, c) => {

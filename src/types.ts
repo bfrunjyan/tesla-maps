@@ -45,6 +45,40 @@ export interface Battery {
   source: 'manual' | 'tesla'
 }
 
+/** A car on the driver's Tesla account (Connect Tesla). `model` is a catalog id when the VIN tells it. */
+export interface TeslaCar {
+  vin: string
+  name: string
+  model: string | null
+  year: number | null
+}
+
+/** What the car last reported (see server/lib/teslaData.ts). */
+export interface TeslaReading {
+  pct: number
+  rangeKm: number | null
+  charging: 'charging' | 'complete' | 'stopped' | 'unplugged' | 'unknown'
+  minutesToFull: number | null
+  limitPct: number | null
+  powerKw: number | null
+  /** When the car reported it (ISO time). */
+  at: string
+  /** False when the car was asleep and this is its last report. */
+  live: boolean
+}
+
+/** Why the newest reading isn't live. */
+export type TeslaNote = 'asleep' | 'limit' | 'unavailable' | null
+
+export interface TeslaLink {
+  /** Whether this server offers Connect Tesla at all. */
+  enabled: boolean
+  connected: boolean
+  cars: TeslaCar[]
+  vin: string | null
+  reading: TeslaReading | null
+}
+
 export interface Position {
   lon: number
   lat: number

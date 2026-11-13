@@ -1,4 +1,4 @@
-import type { Charger, Place, Vehicle } from '../types'
+import type { Charger, Place, TeslaLink, TeslaNote, Vehicle } from '../types'
 
 export interface User {
   id: string
@@ -69,6 +69,14 @@ export const api = {
   chargers: () => request<{ chargers: Charger[]; updatedAt: string; sources: string[] }>('GET', '/chargers'),
   vehicle: () => request<{ vehicle: Vehicle | null }>('GET', '/vehicle'),
   setVehicle: (vehicle: Vehicle | null) => request<{ ok: true }>('PUT', '/vehicle', { vehicle }),
+
+  teslaStatus: () => request<TeslaLink>('GET', '/tesla/status'),
+  /** Asks the car for its battery now (the server spaces these out; Tesla bills each one). */
+  teslaRead: () => request<TeslaLink & { note: TeslaNote }>('POST', '/tesla/read', {}),
+  teslaCar: (vin: string) => request<TeslaLink>('PUT', '/tesla/car', { vin }),
+  teslaDisconnect: () => request<{ ok: true }>('DELETE', '/tesla'),
+  /** Opened as a page: it leads to Tesla's sign-in and back. */
+  teslaStartUrl: '/api/tesla/start',
 
   places: () => request<SavedPlaces>('GET', '/places'),
   importPlaces: (local: SavedPlaces) => request<SavedPlaces>('POST', '/places/import', local),

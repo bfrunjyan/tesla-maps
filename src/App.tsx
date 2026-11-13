@@ -64,7 +64,8 @@ function MapApp() {
           <AccountSheet />
         </Suspense>
       )}
-      <LocationSheet />
+      {/* One sheet at a time: the location explainer waits behind the account and car sheets. */}
+      {!accountOpen && !carSheetOpen && <LocationSheet />}
       {carSheetOpen && (
         <Suspense fallback={null}>
           <CarSheet />

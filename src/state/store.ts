@@ -4,7 +4,7 @@ import { api, type AuthMethods, type SavedPlaces, type User } from '../services/
 import type { RouteOption } from '../nav/routeOptions'
 import type { ChargerFilter } from '../lib/chargers'
 import { clampPct } from '../nav/battery'
-import type { Battery, Charger, NavProgress, Place, Position, Route, Vehicle } from '../types'
+import type { Battery, Charger, NavProgress, Place, Position, Route, TeslaLink, TeslaNote, Vehicle } from '../types'
 
 export type SearchTab = 'recents' | 'favorites' | 'charging' | 'hungry' | 'lucky'
 export type SearchMode = 'navigate' | 'set-home' | 'set-work'
@@ -50,6 +50,12 @@ interface State {
   vehicle: Vehicle | null
   battery: Battery | null
   carSheetOpen: boolean
+  /** Connect Tesla: the linked account and what the car last reported. */
+  tesla: TeslaLink
+  teslaNote: TeslaNote
+  teslaBusy: boolean
+  /** The connected Tesla is a different model or year than the chosen car: offer to match it. */
+  carPrompt: boolean
   toolsVisible: boolean
   mapBearing: number
   satellite: boolean
@@ -111,6 +117,8 @@ interface Actions {
   setBattery: (pct: number) => void
   /** Mapic's running estimate while driving (keeps the time it was last set). */
   drainBattery: (deltaPct: number) => void
+  /** The Tesla link changed or the car sent a reading: the battery follows the car. */
+  applyTesla: (link: TeslaLink, note?: TeslaNote) => void
   /** Replace saved places (after sign-in / loading the account). */
   setPlaces: (p: SavedPlaces) => void
   /** Remove personal places from this device (sign-out). */
@@ -119,6 +127,8 @@ interface Actions {
 
 const samePlace = (a: Place, b: Place) =>
   a.id === b.id || (Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lon - b.lon) < 1e-5)
+
+export const NO_TESLA: TeslaLink = { enabled: false, connected: false, cars: [], vin: null, reading: null }
 
 let toastSeq = 0
 let chargersLoadedAt = 0
@@ -146,6 +156,10 @@ export const useStore = create<State & Actions>((set, get) => ({
   vehicle: load<Vehicle | null>('vehicle', null),
   battery: load<Battery | null>('battery', null),
   carSheetOpen: false,
+  tesla: NO_TESLA,
+  teslaNote: null,
+  teslaBusy: false,
+  carPrompt: false,
   toolsVisible: false,
   mapBearing: 0,
   satellite: load('satellite', false),
@@ -280,6 +294,20 @@ export const useStore = create<State & Actions>((set, get) => ({
     const battery = { ...b, pct: clampPct(b.pct - deltaPct) }
     save('battery', battery)
     set({ battery })
+  },
+  applyTesla: (link, note = null) => {
+    const prev = get().battery
+    let battery = prev
+    if (link.connected && link.reading) {
+      const at = Date.parse(link.reading.at)
+      // A reading that was already applied keeps Mapic's estimate, lowered while driving since then.
+      if (!(prev?.source === 'tesla' && prev.at >= at)) battery = { pct: link.reading.pct, at, source: 'tesla' }
+    } else if (prev?.source === 'tesla') {
+      // No longer read from the car: the level stays, and is the driver's to correct.
+      battery = { ...prev, source: 'manual' }
+    }
+    if (battery !== prev) save('battery', battery)
+    set({ tesla: link, teslaNote: note, battery })
   },
   setPlaces: ({ home, work, favorites, recents }) => {
     save('home', home)

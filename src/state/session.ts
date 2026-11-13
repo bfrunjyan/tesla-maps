@@ -1,5 +1,6 @@
 import { load, save } from '../lib/storage'
 import { api, ApiError, type User } from '../services/api'
+import { forgetTesla, loadTesla, readTesla, showTeslaOutcome, startTeslaSync } from '../vehicle/tesla'
 import { useStore } from './store'
 
 /**
@@ -61,10 +62,12 @@ async function loadAccount(user: User, { fresh }: { fresh: boolean }) {
 export async function initSession() {
   const params = new URLSearchParams(location.search)
   const authError = params.get('auth_error')
-  if (authError) {
+  const teslaOutcome = params.get('tesla')
+  if (authError || teslaOutcome) {
     params.delete('auth_error')
+    params.delete('tesla')
     history.replaceState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}`)
-    get().showToast(authError)
+    if (authError) get().showToast(authError)
   }
   try {
     const [{ methods }, me] = await Promise.all([api.config(), api.me()])
@@ -86,6 +89,11 @@ export async function initSession() {
   } finally {
     get().set({ authReady: true })
   }
+  // Connect Tesla: the linked car's level, then keep it current while the app is open.
+  await loadTesla()
+  showTeslaOutcome(teslaOutcome)
+  startTeslaSync()
+  readTesla('open')
 }
 
 export async function completeSignIn(user: User) {
@@ -94,6 +102,7 @@ export async function completeSignIn(user: User) {
   try {
     await loadAccount(user, { fresh: true })
     get().showToast(`Signed in as ${user.email}`)
+    loadTesla().then(() => readTesla('open'))
   } catch {
     get().showToast('Signed in, but your places couldn’t load. They’ll sync next time.')
   }
@@ -104,6 +113,7 @@ function forgetDevice() {
   save(OWNER_KEY, null)
   save(REMEMBER_KEY, null)
   get().set({ user: null, accountOpen: false })
+  forgetTesla()
 }
 
 export async function signOut() {

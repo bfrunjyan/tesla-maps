@@ -33,6 +33,7 @@ export function MapControls() {
   const user = useStore((s) => s.user)
   const vehicle = useStore((s) => s.vehicle)
   const battery = useStore((s) => s.battery)
+  const charging = useStore((s) => s.battery?.source === 'tesla' && s.tesla.reading?.charging === 'charging')
   const s = useStore.getState()
 
   // Tools hide themselves after a few seconds without interaction, like in the car.
@@ -58,12 +59,12 @@ export function MapControls() {
       <GpsIndicator />
       <button
         className="surface battery-chip"
-        aria-label={battery ? `Battery ${Math.round(battery.pct)} percent. Open car and battery` : vehicle ? 'Set battery level' : 'Choose your car'}
+        aria-label={battery ? `Battery ${Math.round(battery.pct)} percent${charging ? ', charging' : ''}. Open car and battery` : vehicle ? 'Set battery level' : 'Choose your car'}
         onClick={() => s.set({ carSheetOpen: true, toolsVisible: false })}
       >
         {battery ? (
           <>
-            <BatteryIcon pct={battery.pct} size={24} />
+            <BatteryIcon pct={battery.pct} size={24} charging={charging} />
             <span className="battery-chip__pct">{Math.round(battery.pct)}%</span>
           </>
         ) : (

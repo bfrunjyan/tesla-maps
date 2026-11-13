@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "dev:api": "node --watch --env-file-if-exists=.env.local server/index.ts",
+    "dev:api:tesla": "APP_URL=http://localhost:5174 TESLA_FAKE=1 npm run dev:api",
+    "tesla:register": "node --env-file-if-exists=.env.local scripts/tesla-register.mjs",
     "build": "npm run typecheck && vite build && node scripts/compress.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "preview": "vite preview --host",

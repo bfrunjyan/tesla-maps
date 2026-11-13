@@ -78,9 +78,45 @@ the map and in the Charging tab.
 
 Drivers pick their Tesla (model, year, version; `src/vehicle/catalog.ts`) from the battery
 chip on the map. The choice is saved on the device and in the account (`/api/vehicle`).
-They set the battery level by hand; Mapic lowers it as the car moves and shows the charge
+They set the battery level by hand (or connect their Tesla, below); Mapic lowers it as the car moves and shows the charge
 at arrival on each route option and during guidance (amber under 20 %, red under 10 %).
 Battery sizes and consumption are estimates. Photo credits: `public/cars/CREDITS.md`.
+
+### Connect Tesla
+
+With a Tesla developer app set up, signed-in drivers can connect their Tesla account from the
+car sheet. Mapic then reads charge level, range and charging state from the car itself
+(Tesla Fleet API, read-only scope `vehicle_device_data`), and the manual battery controls step
+aside. The link belongs to the Mapic account, so a driver can connect on a phone and the car
+picks it up. Hidden until `TESLA_CLIENT_ID` and `TESLA_CLIENT_SECRET` are set.
+
+Tesla bills every reading (about $0.002, less a $10 monthly discount) and asks apps not to
+poll, so Mapic reads the car when the app opens, when a route is planned, and every 10 minutes
+while driving or charging; in between it lowers the level itself. The server answers repeat
+requests within a minute from the last reading and stops at `TESLA_DAILY_READS` per driver
+per day (default 60). A sleeping car is never woken: Mapic shows its last report.
+Tokens are stored encrypted (`server/lib/secretBox.ts`, key derived from the client secret);
+Disconnect, or deleting the account, removes them.
+
+Setup, once:
+
+1. At [developer.tesla.com](https://developer.tesla.com) create an app (the account needs a
+   payment method and a billing limit above 0). Scope: Vehicle Information. Allowed origin:
+   `https://mapic.site`. Redirect URI: `https://mapic.site/api/tesla/callback`.
+2. Make a key pair and keep `private-key.pem` to yourself (Mapic doesn't need it):
+   `openssl ecparam -name prime256v1 -genkey -noout -out private-key.pem` then
+   `openssl ec -in private-key.pem -pubout -out public-key.pem`.
+3. In Railway set `TESLA_CLIENT_ID`, `TESLA_CLIENT_SECRET` and `TESLA_PUBLIC_KEY` (the contents
+   of `public-key.pem`). After the deploy the key is live at
+   `/.well-known/appspecific/com.tesla.3p.public-key.pem`.
+4. Register the domain with Tesla in both regions:
+   `TESLA_CLIENT_ID=… TESLA_CLIENT_SECRET=… APP_URL=https://mapic.site npm run tesla:register`.
+
+Try it without keys: `npm run dev:api:tesla` uses a stand-in for Tesla
+(`server/dev/fakeTesla.ts`, never mounted in production); change what its car reports at
+`/api/dev/tesla/set?pct=41&charging=Charging&minutes=35`. Not yet verified against Tesla
+itself: that needs the keys above and a real car. China-region Tesla accounts use a separate
+Tesla service and are not covered.
 
 ## Route choices
 

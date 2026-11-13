@@ -907,6 +907,37 @@ h2, p { margin: 0; }
 .battery__step { background: var(--surface-raised); }
 .battery__value { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .battery__slider { width: 100%; height: 44px; accent-color: var(--accent); touch-action: pan-y; }
+.battery-icon[data-level='charging'] { color: #2fb36d; }
+.battery__live { margin: -4px 0 0; font-size: 15px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.battery__refresh[data-busy='true'] { animation: battery-spin 0.7s linear infinite; }
+@keyframes battery-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .battery__refresh[data-busy='true'] { animation: none; opacity: 0.5; } }
+
+.picker__note { margin: 0; }
+.picker__link { color: var(--accent); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; padding: 8px 0; }
+:root[data-theme='dark'] .picker__link { color: #8fb0ff; }
+
+/* Connect Tesla */
+.tesla { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 16px; align-items: center; padding-top: 16px; border-top: 1px solid var(--divider); }
+.tesla__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tesla__text .setting__hint { margin: 0; }
+.tesla__state { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.tesla__action { min-height: 48px; padding: 0 18px; font-size: 14px; white-space: nowrap; }
+.tesla__actions { display: flex; gap: 8px; }
+.tesla__actions .btn { min-height: 48px; padding: 0 16px; }
+.tesla__cars { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.tesla__car {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font-size: 15px;
+  font-weight: 600;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease;
+}
+.tesla__car:active { transform: scale(0.97); }
+.tesla__car[aria-checked='true'] { background: var(--accent); color: #fff; }
+.tesla__car:disabled { opacity: 0.6; }
 
 .picker__q { margin: 0; font-size: 16px; font-weight: 600; }
 .models { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -958,6 +989,8 @@ h2, p { margin: 0; }
 @media (max-width: 640px) {
   .models { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .car__hero { grid-template-columns: 1fr; }
+  .tesla { grid-template-columns: 1fr; }
+  .tesla__action, .tesla__actions .btn { width: 100%; }
   .charger-filter { min-width: 0; }
 }
 @media (hover: hover) and (pointer: fine) {
