@@ -659,10 +659,11 @@ h2, p { margin: 0; }
   color: var(--text);
   font: inherit;
   font-size: 16px;
-  outline: none;
   transition: border-color 140ms ease;
 }
-.field__input:focus { border-color: var(--accent); }
+/* One 2px focus ring on the field's edge (replaces both the border and the global outline). */
+.field__input:focus,
+.field__input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
 .field__input--code { font-size: 24px; font-weight: 700; letter-spacing: 0.35em; text-align: center; font-variant-numeric: tabular-nums; }
 .field__error { margin: 0; font-size: 14px; line-height: 1.4; color: var(--danger); }
 :root[data-theme='dark'] .field__error { color: #ff7a80; }
