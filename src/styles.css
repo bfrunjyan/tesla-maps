@@ -58,6 +58,8 @@
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; overflow: hidden; background: var(--map-ground); }
+/* The phone link page scrolls; the map app never does. */
+html:has(.link), html:has(.link) body, html:has(.link) #root { height: auto; min-height: 100%; overflow: visible; }
 body {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -535,3 +537,166 @@ h2, p { margin: 0; }
   *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
   .spin { animation: spin 1.6s linear infinite !important; }
 }
+
+/* ------------------------------------------------------------ account */
+.controls__top { display: flex; gap: 10px; }
+.account-btn {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  color: var(--text);
+  transition: transform 140ms var(--ease-out);
+}
+.account-btn:active { transform: scale(0.95); }
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+}
+.avatar--lg { width: 52px; height: 52px; font-size: 22px; }
+
+.panel__signin {
+  flex: none;
+  min-height: 48px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--divider);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: left;
+}
+:root[data-theme='dark'] .panel__signin { color: #8fb0ff; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  background: var(--scrim);
+  transition: opacity 200ms ease;
+}
+@starting-style { .modal { opacity: 0; } }
+.sheet {
+  width: min(460px, 100%);
+  max-height: calc(100dvh - 2 * var(--gutter));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 8px 24px 24px;
+  outline: none;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.sheet[data-wide='true'] { width: min(820px, 100%); }
+@starting-style { .sheet { opacity: 0; transform: scale(0.97); } }
+.sheet__head { display: flex; align-items: center; justify-content: space-between; padding-left: 0; }
+.sheet__title { font-size: 22px; font-weight: 700; }
+.sheet__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 8px 16px 0 0; }
+.sheet__col + .sheet__col { border-left: 1px solid var(--divider); padding-left: 28px; }
+.sheet__subtitle { margin: 0 0 6px; font-size: 16px; font-weight: 700; }
+.sheet__text { margin: 0 0 18px; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
+.sheet__text strong { color: var(--text); }
+@media (max-width: 720px) {
+  .sheet__cols { grid-template-columns: 1fr; }
+  .sheet__col + .sheet__col { border-left: 0; padding-left: 0; border-top: 1px solid var(--divider); padding-top: 20px; }
+}
+
+.qr { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.qr__frame {
+  display: grid;
+  place-items: center;
+  width: 244px;
+  height: 244px;
+  border-radius: var(--radius);
+  background: #fff;
+  color: #171a20;
+}
+.qr__img { display: block; width: 220px; height: 220px; image-rendering: pixelated; }
+.qr__expired { display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 14px; color: #5c5e62; }
+.qr__expired .btn { background: #e7e7e7; color: #171a20; }
+.qr__code { margin: 0; font-size: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.qr__code strong { color: var(--text); letter-spacing: 0.08em; }
+
+.auth-choices, .auth-form { display: flex; flex-direction: column; gap: 10px; }
+.btn--block { width: 100%; text-decoration: none; }
+.btn:disabled { opacity: 0.6; cursor: default; }
+.btn--danger { background: var(--danger); color: #fff; }
+.btn--ghost-danger { color: var(--danger); }
+.auth-google { background: #fff; color: #1f1f1f; border: 1px solid rgba(0, 0, 0, 0.12); }
+.auth-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.auth-note { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
+.auth-note strong { color: var(--text); }
+.link-btn { align-self: center; min-height: 44px; padding: 0 8px; font-size: 14px; font-weight: 600; color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; }
+.link-btn:disabled { opacity: 0.5; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field__label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.field__hint { font-weight: 500; color: var(--text-faint); }
+.field__input {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 140ms ease;
+}
+.field__input:focus { border-color: var(--accent); }
+.field__input--code { font-size: 24px; font-weight: 700; letter-spacing: 0.35em; text-align: center; font-variant-numeric: tabular-nums; }
+.field__error { margin: 0; font-size: 14px; line-height: 1.4; color: var(--danger); }
+:root[data-theme='dark'] .field__error { color: #ff7a80; }
+
+.account { display: flex; flex-direction: column; gap: 4px; padding: 8px 16px 0 0; }
+.account__who { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.account__names { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.account__name { font-size: 17px; font-weight: 700; }
+.account__email { font-size: 15px; color: var(--text-muted); overflow-wrap: anywhere; }
+.account__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.account__actions .btn { flex: 1 1 160px; }
+
+/* Phone page from the QR code */
+.link {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.link__card {
+  width: min(420px, 100%);
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  text-align: center;
+}
+.link__card > .spin { align-self: center; }
+.link__icon { align-self: center; color: var(--text-muted); }
+.link__icon--ok { color: #2fb36d; }
+.link__title { margin: 0; font-size: 22px; font-weight: 700; text-wrap: balance; }
+.link__text { margin: 0 0 6px; font-size: 15px; line-height: 1.5; color: var(--text-muted); }
+.link__text strong { color: var(--text); }
+.link__code { letter-spacing: 0.08em; }
+.link .auth-choices, .link .auth-form { text-align: left; }

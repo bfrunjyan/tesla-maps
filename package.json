@@ -5,21 +5,28 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit && vite build",
+    "dev:api": "node --watch --env-file-if-exists=.env.local server/index.ts",
+    "build": "npm run typecheck && vite build",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "preview": "vite preview --host",
-    "typecheck": "tsc --noEmit",
-    "start": "node server.mjs"
+    "start": "node server/index.ts"
   },
   "dependencies": {
     "@fontsource-variable/montserrat": "^5.3.0",
+    "@hono/node-server": "^2.1.8",
     "@phosphor-icons/react": "^2.1.10",
+    "hono": "^4.13.18",
     "maplibre-gl": "^6.18.0",
+    "postgres": "^4.1.1",
+    "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@types/geojson": "^7946.0.16",
+    "@types/node": "^26.6.6",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
@@ -27,6 +34,6 @@
     "vite": "^8.3.8"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24"
   }
 }

@@ -118,6 +118,8 @@ function SearchPanel() {
   const homePlace = useStore((s) => s.home)
   const workPlace = useStore((s) => s.work)
   const set = useStore((s) => s.set)
+  const user = useStore((s) => s.user)
+  const authReady = useStore((s) => s.authReady)
   const home = useShortcut('home')
   const work = useShortcut('work')
 
@@ -136,6 +138,11 @@ function SearchPanel() {
             {!workPlace && <span className="shortcut__hint">Set</span>}
           </button>
         </div>
+      )}
+      {searchMode === 'navigate' && !user && authReady && !query && (
+        <button className="panel__signin" onClick={() => set({ panelOpen: false, accountOpen: true })}>
+          Sign in to keep Home, Work and favorites on all your cars
+        </button>
       )}
       {query ? (
         <SearchResults query={query} />

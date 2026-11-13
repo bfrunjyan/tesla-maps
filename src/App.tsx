@@ -1,15 +1,34 @@
 import { useEffect, useState } from 'react'
+import { AccountSheet } from './components/AccountSheet'
 import { GuidanceCard } from './components/GuidanceCard'
+import { LinkPage } from './components/LinkPage'
 import { MapControls } from './components/MapControls'
 import { PlaceCard } from './components/PlaceCard'
 import { SearchBox } from './components/SearchBox'
 import { MapView } from './map/MapView'
 import { startLocation, toggleSimulation } from './nav/controller'
+import { initSession } from './state/session'
 import { useStore } from './state/store'
 
 const DEV = new URLSearchParams(location.search).has('dev')
 
 export default function App() {
+  useEffect(() => {
+    initSession()
+  }, [])
+  // Phone page opened from the car's sign-in QR code.
+  if (location.pathname === '/link') {
+    return (
+      <>
+        <LinkPage />
+        <Toast />
+      </>
+    )
+  }
+  return <MapApp />
+}
+
+function MapApp() {
   const nav = useStore((s) => s.nav)
   const panelOpen = useStore((s) => s.panelOpen)
   const selectedPlace = useStore((s) => s.selectedPlace)
@@ -28,6 +47,7 @@ export default function App() {
       </div>
       <MapControls />
       {areaLabel && <div className="area-label">{areaLabel}</div>}
+      <AccountSheet />
       <Toast />
       {DEV && <DevBar />}
     </div>

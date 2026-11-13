@@ -5,20 +5,52 @@ Runs in the car's browser. The UI follows the car's own navigation map layout
 (Navigate pill, Home/Work, Recents/Favorites/Charging/Hungry/Lucky, right-side map tools,
 heading-up 3D map, turn card).
 
-## Run
+## Run locally
+
+Needs Node 24+ and Postgres (any; Docker is easiest).
 
 ```bash
 npm install
-npm run dev        # http://localhost:5174 (add ?dev for the test bar: simulated drive, voice language)
-npm run build      # production build in dist/
+docker run -d --rm --name teslamaps-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=teslamaps -p 54340:5432 postgres:16
+cp .env.example .env.local     # defaults point at the container above
+npm run dev:api                # API on :8787 (applies database migrations on start)
+npm run dev                    # web app on :5174, proxies /api to the API
 ```
 
-### Deploy (Railway)
+Add `?dev` to the URL for the test bar (simulated drive, voice language).
+Without an email provider, sign-in codes are printed in the `dev:api` terminal.
 
-Railway detects Node, runs `npm install`, `npm run build`, then `npm start`
-(a static server on Railway's `PORT`). Node 22.12+ is required (`engines` in package.json).
-Generate a public domain in Railway; it's HTTPS, which the car's browser needs for GPS.
-Variables prefixed `VITE_` are baked in at build time, so redeploy after changing them.
+## Accounts
+
+Drivers can sign in four ways; Home, Work, favorites and recent destinations then sync
+to their account. Places saved before signing in are merged into the account; signing out
+removes them from the car (it may be shared).
+
+- **QR code via phone** (main option in the car): the car shows a QR code and short code.
+  The phone opens `/link?c=CODE`, signs in, and taps "Sign in the car"; the car is polling
+  and receives its own session. Codes expire after 5 minutes and work once; the car polls
+  with a separate secret, so the link alone can't claim the session.
+- **Email one-time code**: needs `RESEND_API_KEY` and `EMAIL_FROM` in production.
+- **Email + password**: scrypt-hashed. If someone registers an email they don't own,
+  the real owner's first code or Google sign-in removes that password and its sessions.
+- **Google**: needs `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`; hidden until set.
+
+Sessions are httpOnly cookies (90 days, sliding). API code lives in `server/`
+(Hono + Postgres); schema in `server/migrations/`.
+
+## Deploy (Railway)
+
+1. Add a **Postgres** service to the project.
+2. On the app service, set Variables:
+   - `DATABASE_URL` → reference the Postgres service's `DATABASE_URL`
+   - `APP_URL` → the app's public `https://…` domain (Settings → Networking → Generate domain)
+   - optional: `RESEND_API_KEY`, `EMAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `VITE_MAPBOX_TOKEN`
+3. Railway runs `npm install`, `npm run build`, `npm start`. `npm start` runs the API and
+   serves the built app from one process; migrations apply automatically on start.
+
+Node 24+ is required (`engines` in package.json). `VITE_` variables are baked in at build
+time, so redeploy after changing them. Rate limits are in memory: run a single instance
+(or move them to Postgres/Redis before scaling out).
 
 ### Live traffic
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { load, save } from '../lib/storage'
+import { api, type AuthMethods, type SavedPlaces, type User } from '../services/api'
 import type { NavProgress, Place, Position, Route } from '../types'
 
 export type SearchTab = 'recents' | 'favorites' | 'charging' | 'hungry' | 'lucky'
@@ -56,6 +57,12 @@ interface State {
   lang: Lang
   areaLabel: string
   toast: Toast | null
+
+  /** Signed-in account, or null for a guest. Places sync to the account when set. */
+  user: User | null
+  authReady: boolean
+  authMethods: AuthMethods | null
+  accountOpen: boolean
 }
 
 interface Actions {
@@ -70,12 +77,22 @@ interface Actions {
   addRecent: (p: Place) => void
   setVoice: (on: boolean) => void
   setLang: (lang: Lang) => void
+  /** Replace saved places (after sign-in / loading the account). */
+  setPlaces: (p: SavedPlaces) => void
+  /** Remove personal places from this device (sign-out). */
+  clearPlaces: () => void
 }
 
 const samePlace = (a: Place, b: Place) =>
   a.id === b.id || (Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lon - b.lon) < 1e-5)
 
 let toastSeq = 0
+
+/** When signed in, mirror a change to the account; local state has already changed. */
+function cloud(get: () => State & Actions, op: () => Promise<unknown>) {
+  if (!get().user) return
+  op().catch(() => get().showToast('Couldn’t save to your account. Check the connection.'))
+}
 
 export const useStore = create<State & Actions>((set, get) => ({
   position: null,
@@ -113,6 +130,11 @@ export const useStore = create<State & Actions>((set, get) => ({
   areaLabel: '',
   toast: null,
 
+  user: null,
+  authReady: false,
+  authMethods: null,
+  accountOpen: false,
+
   set: (patch) => {
     set(patch)
     for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting'] as const) {
@@ -126,23 +148,28 @@ export const useStore = create<State & Actions>((set, get) => ({
     const home = p && { ...p, category: 'home' as const }
     save('home', home)
     set({ home })
+    cloud(get, () => api.setHomeWork('home', home))
   },
   setWork: (p) => {
     const work = p && { ...p, category: 'work' as const }
     save('work', work)
     set({ work })
+    cloud(get, () => api.setHomeWork('work', work))
   },
   toggleFavorite: (p) => {
     const favs = get().favorites
-    const next = favs.some((f) => samePlace(f, p)) ? favs.filter((f) => !samePlace(f, p)) : [p, ...favs]
+    const existing = favs.filter((f) => samePlace(f, p))
+    const next = existing.length ? favs.filter((f) => !samePlace(f, p)) : [p, ...favs]
     save('favorites', next)
     set({ favorites: next })
+    cloud(get, () => (existing.length ? Promise.all(existing.map((f) => api.removeFavorite(f.id))) : api.addFavorite(p)))
   },
   isFavorite: (p) => get().favorites.some((f) => samePlace(f, p)),
   addRecent: (p) => {
     const next = [p, ...get().recents.filter((r) => !samePlace(r, p))].slice(0, 25)
     save('recents', next)
     set({ recents: next })
+    cloud(get, () => api.addRecent(p))
   },
   setVoice: (on) => {
     save('voiceOn', on)
@@ -152,4 +179,12 @@ export const useStore = create<State & Actions>((set, get) => ({
     save('lang', lang)
     set({ lang })
   },
+  setPlaces: ({ home, work, favorites, recents }) => {
+    save('home', home)
+    save('work', work)
+    save('favorites', favorites)
+    save('recents', recents)
+    set({ home, work, favorites, recents })
+  },
+  clearPlaces: () => get().setPlaces({ home: null, work: null, favorites: [], recents: [] }),
 }))

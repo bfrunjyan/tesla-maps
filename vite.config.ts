@@ -8,5 +8,10 @@ export default defineConfig({
   worker: { format: 'es' },
   // MapLibre 6 loads its worker relative to its own module URL; pre-bundling breaks that path.
   optimizeDeps: { exclude: ['maplibre-gl'] },
-  server: { port: 5174, strictPort: true },
+  server: {
+    port: 5174,
+    strictPort: true,
+    // API server (npm run dev:api) runs on 8787.
+    proxy: { '/api': 'http://localhost:8787' },
+  },
 })

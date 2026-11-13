@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { CloudSun, Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal } from '@phosphor-icons/react'
+import { CloudSun, Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal, UserCircle } from '@phosphor-icons/react'
 import { cardinal } from '../lib/geo'
 import { mapCenter } from '../map/mapApi'
 import { trafficTileUrl } from '../map/style'
@@ -30,6 +30,7 @@ export function MapControls() {
   const satellite = useStore((s) => s.satellite)
   const showTraffic = useStore((s) => s.showTraffic)
   const settingsOpen = useStore((s) => s.settingsOpen)
+  const user = useStore((s) => s.user)
   const s = useStore.getState()
 
   // Tools hide themselves after a few seconds without interaction, like in the car.
@@ -64,6 +65,14 @@ export function MapControls() {
 
   return (
     <div className="controls">
+      <div className="controls__top">
+      <button
+        className="surface account-btn"
+        aria-label={user ? `Account: ${user.email}` : 'Sign in'}
+        onClick={() => s.set({ accountOpen: true, toolsVisible: false })}
+      >
+        {user ? <span className="avatar" aria-hidden>{(user.name ?? user.email)[0].toUpperCase()}</span> : <UserCircle size={28} />}
+      </button>
       <button
         className="surface compass"
         aria-label={northUp ? 'North up. Switch to heading up' : 'Heading up. Switch to north up'}
@@ -74,6 +83,7 @@ export function MapControls() {
           <path d="M12 3 18 19 12 15.5 6 19Z" fill="currentColor" />
         </svg>
       </button>
+      </div>
 
       {!follow && (
         <button className="surface tool-solo" aria-label="Recenter on car" onClick={() => s.set({ follow: true })}>
