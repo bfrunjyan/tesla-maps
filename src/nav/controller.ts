@@ -155,23 +155,54 @@ function updateAreaLabel(pos: Position) {
 
 /* ------------------------------------------------------------- location */
 
-let watchId: number | null = null
-let fallbackTimer: number | undefined
+const WEAK_ACCURACY_M = 50
+const LOST_AFTER_MS = 12_000
 
-export function startLocation() {
-  if (watchId != null) return
-  const useFallback = () => {
-    if (get().positionSource !== 'pending') return
-    onPosition({ ...FALLBACK_CENTER, heading: null, speed: 0, accuracy: 9999, ts: Date.now() }, 'fallback')
-    get().showToast('Location unavailable. Showing Yerevan')
+let watchId: number | null = null
+let lastFixAt = 0
+let healthTimer: number | undefined
+
+function showFallbackArea() {
+  if (get().position) return
+  onPosition({ ...FALLBACK_CENTER, heading: null, speed: 0, accuracy: 9999, ts: Date.now() }, 'fallback')
+}
+
+/**
+ * Called once at startup. Checks the permission first so the driver sees why
+ * Mapic needs location before the car's own "Allow" prompt appears.
+ */
+export async function initLocation() {
+  if (!('geolocation' in navigator)) {
+    get().set({ gps: 'unavailable' })
+    return showFallbackArea()
   }
-  if (!('geolocation' in navigator)) return useFallback()
-  fallbackTimer = window.setTimeout(useFallback, 8000)
+  let state: PermissionState | 'unknown' = 'unknown'
+  try {
+    const status = await navigator.permissions.query({ name: 'geolocation' })
+    state = status.state
+    // Re-enabled in the browser's site settings: start right away.
+    status.onchange = () => {
+      if (status.state === 'granted') startWatching()
+      if (status.state === 'denied') get().set({ gps: 'denied', locationSheetOpen: true })
+    }
+  } catch {
+    /* Permissions API unavailable: just ask */
+  }
+  if (state === 'granted' || state === 'unknown') return startWatching()
+  showFallbackArea()
+  get().set({ gps: state === 'denied' ? 'denied' : 'needs-permission', locationSheetOpen: true })
+}
+
+/** Starts GPS. Call from a tap when possible (the "Allow location" button). */
+export function startWatching() {
+  if (watchId != null) return
+  get().set({ gps: 'finding', locationSheetOpen: false })
   watchId = navigator.geolocation.watchPosition(
     (p) => {
-      window.clearTimeout(fallbackTimer)
+      lastFixAt = Date.now()
       if (sim.running) return
       const h = p.coords.heading
+      get().set({ gps: p.coords.accuracy > WEAK_ACCURACY_M ? 'weak' : 'ok' })
       onPosition(
         {
           lon: p.coords.longitude,
@@ -184,12 +215,31 @@ export function startLocation() {
         'gps',
       )
     },
-    () => {
-      window.clearTimeout(fallbackTimer)
-      useFallback()
+    (err) => {
+      if (err.code === err.PERMISSION_DENIED) {
+        if (watchId != null) navigator.geolocation.clearWatch(watchId)
+        watchId = null
+        get().set({ gps: 'denied', locationSheetOpen: true })
+      } else if (!lastFixAt) {
+        // No fix yet (no signal or timed out). The watch keeps trying.
+        get().set({ gps: 'unavailable' })
+      }
+      showFallbackArea()
     },
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
   )
+  // A fix that stops arriving (tunnel, garage, browser throttling) shows as "lost".
+  window.clearInterval(healthTimer)
+  healthTimer = window.setInterval(() => {
+    const { gps } = get()
+    if ((gps === 'ok' || gps === 'weak') && !sim.running && Date.now() - lastFixAt > LOST_AFTER_MS) get().set({ gps: 'lost' })
+  }, 3000)
+}
+
+/** Driver chose "Not now": browse the map without GPS. */
+export function skipLocation() {
+  showFallbackArea()
+  get().set({ locationSheetOpen: false })
 }
 
 /* ------------------------------------------- drive simulation (dev only) */
@@ -213,6 +263,7 @@ export function toggleSimulation(kmh = 45) {
     return false
   }
   sim.running = true
+  get().set({ gps: 'ok' })
   sim.along = get().nav?.progress?.alongM ?? 0
   const stepMs = 1000
   sim.timer = window.setInterval(() => {

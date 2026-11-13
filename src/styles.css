@@ -701,3 +701,45 @@ h2, p { margin: 0; }
 .link__text strong { color: var(--text); }
 .link__code { letter-spacing: 0.08em; }
 .link .auth-choices, .link .auth-form { text-align: left; }
+
+/* ----------------------------------------------------------- location */
+.gps-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 60px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  transition: transform 140ms var(--ease-out);
+}
+.gps-chip:active { transform: scale(0.96); }
+.gps-chip__dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-faint); flex: none; }
+.gps-chip[data-tone='warn'] .gps-chip__dot { background: #f39c12; }
+.gps-chip[data-tone='bad'] .gps-chip__dot { background: var(--danger); }
+.gps-chip[data-tone='busy'] .gps-chip__dot { background: var(--accent); animation: gps-pulse 1.4s ease-in-out infinite; }
+@keyframes gps-pulse { 50% { opacity: 0.35; transform: scale(0.8); } }
+
+.loc-sheet { width: min(480px, 100%); }
+.loc-sheet__body { display: flex; flex-direction: column; padding: 4px 16px 0 0; }
+.loc-sheet__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 4px 0 16px;
+  border-radius: 14px;
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+.loc-sheet__hint { margin-top: -8px; }
+.loc-steps { margin: -6px 0 20px; padding-left: 20px; list-style: decimal; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
+.loc-steps strong { color: var(--text); }
+@media (max-width: 640px) {
+  /* Phones: stack account and GPS under the compass; the chip shows only its dot. */
+  .controls__top { flex-direction: column-reverse; align-items: flex-end; }
+  .gps-chip { width: 60px; padding: 0; justify-content: center; }
+  .gps-chip span:last-child { display: none; }
+}

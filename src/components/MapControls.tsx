@@ -6,6 +6,7 @@ import { trafficTileUrl } from '../map/style'
 import { FALLBACK_CENTER } from '../nav/controller'
 import { categorySearch } from '../services/search'
 import { useStore } from '../state/store'
+import { GpsIndicator } from './Location'
 import { SettingsPopover } from './SettingsPopover'
 
 const HIDE_AFTER_MS = 6000
@@ -66,6 +67,7 @@ export function MapControls() {
   return (
     <div className="controls">
       <div className="controls__top">
+      <GpsIndicator />
       <button
         className="surface account-btn"
         aria-label={user ? `Account: ${user.email}` : 'Sign in'}

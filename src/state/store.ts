@@ -8,6 +8,8 @@ export type SearchMode = 'navigate' | 'set-home' | 'set-work'
 export type Lang = 'en-US' | 'ru-RU'
 export type ThemeSetting = 'auto' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
+/** GPS health as the driver should see it. 'ok' shows nothing. */
+export type GpsStatus = 'idle' | 'needs-permission' | 'finding' | 'ok' | 'weak' | 'lost' | 'denied' | 'unavailable'
 
 export interface NavState {
   destination: Place
@@ -25,6 +27,9 @@ interface Toast {
 interface State {
   position: Position | null
   positionSource: 'gps' | 'fallback' | 'sim' | 'pending'
+  gps: GpsStatus
+  /** The location explainer sheet (before the browser prompt, or when blocked). */
+  locationSheetOpen: boolean
   follow: boolean
   northUp: boolean
   threeD: boolean
@@ -97,6 +102,8 @@ function cloud(get: () => State & Actions, op: () => Promise<unknown>) {
 export const useStore = create<State & Actions>((set, get) => ({
   position: null,
   positionSource: 'pending',
+  gps: 'idle',
+  locationSheetOpen: false,
   follow: true,
   northUp: load('northUp', false),
   threeD: load('threeD', true),

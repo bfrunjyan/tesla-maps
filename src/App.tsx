@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { AccountSheet } from './components/AccountSheet'
 import { GuidanceCard } from './components/GuidanceCard'
 import { LinkPage } from './components/LinkPage'
+import { LocationSheet } from './components/Location'
 import { MapControls } from './components/MapControls'
 import { PlaceCard } from './components/PlaceCard'
 import { SearchBox } from './components/SearchBox'
 import { MapView } from './map/MapView'
-import { startLocation, toggleSimulation } from './nav/controller'
+import { initLocation, toggleSimulation } from './nav/controller'
 import { initSession } from './state/session'
 import { useStore } from './state/store'
 
@@ -35,7 +36,9 @@ function MapApp() {
   const areaLabel = useStore((s) => s.areaLabel)
   const closePanel = useStore((s) => s.closePanel)
 
-  useEffect(() => startLocation(), [])
+  useEffect(() => {
+    initLocation()
+  }, [])
 
   return (
     <div className="app">
@@ -48,6 +51,7 @@ function MapApp() {
       <MapControls />
       {areaLabel && <div className="area-label">{areaLabel}</div>}
       <AccountSheet />
+      <LocationSheet />
       <Toast />
       {DEV && <DevBar />}
     </div>
