@@ -296,36 +296,48 @@ h2, p { margin: 0; }
 .guide__next {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 18px 18px 16px;
+  gap: 10px;
+  padding: 10px 4px 10px 12px;
   background: var(--surface-raised);
-  position: relative;
 }
-.guide__next-icon { flex: none; display: grid; place-items: center; width: 64px; height: 64px; }
-.guide__next-text { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
-.guide__next-dist { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.guide__next-street { font-size: 16px; font-weight: 500; color: var(--text); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.guide__next-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; }
+.guide__next-text { flex: 1; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: 2px; }
+.guide__next-dist { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.guide__next-street { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.guide__hide { align-self: flex-start; color: var(--text-muted); }
 .badge {
-  position: absolute;
-  top: 10px;
-  right: 12px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 3px 9px;
   border-radius: 999px;
   background: var(--active-bg);
   font-size: 12px;
   font-weight: 600;
 }
 
+/* Hidden card: the next turn only. Tap to bring the card back. */
+.guide-chip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 50px;
+  padding: 0 12px 0 10px;
+  color: var(--text);
+}
+.guide-chip:active { transform: scale(0.97); }
+.guide-chip__dist { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.guide-chip__caret { color: var(--text-muted); }
+
 .guide__toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 48px;
-  padding: 0 18px;
-  font-size: 14px;
+  min-height: 40px;
+  padding: 0 16px 0 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
   border-bottom: 1px solid var(--divider);
@@ -334,17 +346,21 @@ h2, p { margin: 0; }
 .guide__chev[data-open='true'] { transform: rotate(180deg); }
 
 .turns { overflow-y: auto; overscroll-behavior: contain; min-height: 0; max-height: 40vh; border-bottom: 1px solid var(--divider); }
-.turn { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 18px; color: var(--text); }
+.turn { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 14px; color: var(--text); }
 .turn + .turn { border-top: 1px solid var(--divider); }
 .turn svg { flex: none; color: var(--text-muted); }
-.turn__text { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; }
-.turn__dist { flex: none; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.turn__text { flex: 1; min-width: 0; font-size: 13px; line-height: 1.35; }
+.turn__dist { flex: none; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
-.guide__foot { display: flex; align-items: center; gap: 2px; padding: 10px 6px 10px 18px; }
-.guide__summary { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: baseline; }
-.guide__eta { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.guide__meta { font-size: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.guide__summary .guide__dest { grid-column: 1 / -1; }
+/* Trip summary: arrival time, time and distance left, charge at arrival on one line
+   (wrapping whole items, never inside one), then the destination and the trip buttons. */
+.guide__foot { display: flex; flex-direction: column; padding: 10px 4px 4px 14px; }
+.guide__trip { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 2px; padding-right: 10px; }
+.guide__eta { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.guide__meta { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.guide__trip .arrival { font-size: 13px; align-self: center; }
+.guide__bar { display: flex; align-items: center; gap: 2px; }
+.guide__bar .guide__dest { flex: 1; margin-top: 0; }
 .guide__dest { display: flex; align-items: center; gap: 2px; min-width: 0; margin-top: 2px; }
 .guide__dest-name { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .guide > .guide__dest { padding: 14px 10px 0 18px; }

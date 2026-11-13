@@ -75,6 +75,8 @@ interface State {
   selectedPlace: Place | null
   nav: NavState | null
   turnListOpen: boolean
+  /** The driver hid the turn-by-turn card; a small chip with the next turn stays. */
+  guideHidden: boolean
 
   home: Place | null
   work: Place | null
@@ -117,6 +119,7 @@ interface Actions {
   setBattery: (pct: number) => void
   /** Mapic's running estimate while driving (keeps the time it was last set). */
   drainBattery: (deltaPct: number) => void
+  setGuideHidden: (hidden: boolean) => void
   /** The Tesla link changed or the car sent a reading: the battery follows the car. */
   applyTesla: (link: TeslaLink, note?: TeslaNote) => void
   /** Replace saved places (after sign-in / loading the account). */
@@ -178,6 +181,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   selectedPlace: null,
   nav: null,
   turnListOpen: false,
+  guideHidden: load('guideHidden', false),
 
   home: load<Place | null>('home', null),
   work: load<Place | null>('work', null),
@@ -294,6 +298,10 @@ export const useStore = create<State & Actions>((set, get) => ({
     const battery = { ...b, pct: clampPct(b.pct - deltaPct) }
     save('battery', battery)
     set({ battery })
+  },
+  setGuideHidden: (hidden) => {
+    save('guideHidden', hidden || null)
+    set({ guideHidden: hidden, turnListOpen: false })
   },
   applyTesla: (link, note = null) => {
     const prev = get().battery
