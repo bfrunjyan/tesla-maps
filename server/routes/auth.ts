@@ -70,8 +70,49 @@ auth.get('/config', (c) =>
 auth.get('/me', (c) => c.json({ user: c.get('user') }))
 
 auth.post('/logout', async (c) => {
+  // Also cancel this car's remember token, so it can't sign back in on its own.
+  const token = (await body(c)).rememberToken
+  if (typeof token === 'string') await sql`DELETE FROM remember_tokens WHERE token_hash = ${sha256(token)}`
   await endSession(c)
   return c.json({ ok: true })
+})
+
+/* ------------------------------------------- remember this car (resume) */
+
+const REMEMBER_DAYS = config.sessionDays
+
+async function issueRememberToken(c: Context, userId: string) {
+  const token = randomToken()
+  await sql`
+    INSERT INTO remember_tokens (user_id, token_hash, user_agent, expires_at)
+    VALUES (${userId}, ${sha256(token)}, ${(c.req.header('user-agent') ?? '').slice(0, 300)},
+            now() + make_interval(days => ${REMEMBER_DAYS}))`
+  return token
+}
+
+/** Signed in: get a token to keep in local storage. Replaces this device's previous one. */
+auth.post('/remember', requireUser, async (c) => {
+  const user = c.get('user')!
+  const previous = (await body(c)).previous
+  if (typeof previous === 'string') {
+    await sql`DELETE FROM remember_tokens WHERE token_hash = ${sha256(previous)} AND user_id = ${user.id}`
+  }
+  return c.json({ token: await issueRememberToken(c, user.id) })
+})
+
+/**
+ * Cookie gone but the token survived: sign in again without any typing.
+ * Tokens work once; each use returns a fresh one.
+ */
+auth.post('/resume', async (c) => {
+  if (!hit(`resume:${clientIp(c)}`, 30, 15 * MIN)) return tooMany(c)
+  const token = (await body(c)).token
+  if (typeof token !== 'string' || token.length > 200) return c.json({ error: 'Not remembered' }, 401)
+  const [row] = await sql<{ user_id: string }[]>`
+    DELETE FROM remember_tokens WHERE token_hash = ${sha256(token)} AND expires_at > now() RETURNING user_id`
+  if (!row) return c.json({ error: 'Not remembered' }, 401)
+  await startSession(c, row.user_id)
+  return c.json({ user: await publicUser(row.user_id), token: await issueRememberToken(c, row.user_id) })
 })
 
 auth.delete('/me', requireUser, async (c) => {

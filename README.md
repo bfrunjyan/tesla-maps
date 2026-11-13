@@ -76,7 +76,11 @@ removes them from the car (it may be shared).
   the real owner's first code or Google sign-in removes that password and its sessions.
 - **Google**: needs `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`; hidden until set.
 
-Sessions are httpOnly cookies (90 days, sliding). API code lives in `server/`
+Sessions are httpOnly cookies (90 days, sliding). Tesla's browser may wipe cookies when the car
+powers down, so after any sign-in the app also keeps a **remember token** in local storage
+(single use, rotated on every use, 90 days, cancelled by Sign out). On launch with no session
+cookie, the app trades it for a new session silently. If the car wipes all site data, the QR
+sign-in is one tap on a phone that's still signed in. API code lives in `server/`
 (Hono + Postgres); schema in `server/migrations/`.
 
 ## Deploy (Railway)

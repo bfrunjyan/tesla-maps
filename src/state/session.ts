@@ -1,5 +1,5 @@
 import { load, save } from '../lib/storage'
-import { api, type User } from '../services/api'
+import { api, ApiError, type User } from '../services/api'
 import { useStore } from './store'
 
 /**
@@ -7,7 +7,34 @@ import { useStore } from './store'
  * Guest data is merged into the account on sign-in; another account's cache is discarded.
  */
 const OWNER_KEY = 'placesOwner'
+/** "Remember this car": survives if the car's browser wipes cookies but keeps local storage. */
+const REMEMBER_KEY = 'remember'
 const get = () => useStore.getState()
+
+/** Keep a fresh remember token on this device (replacing the previous one). */
+async function refreshRememberToken() {
+  try {
+    const { token } = await api.remember(load<string | null>(REMEMBER_KEY, null))
+    save(REMEMBER_KEY, token)
+  } catch {
+    /* not critical: the session cookie still works */
+  }
+}
+
+/** Cookie gone? Trade the remember token for a new session, silently. */
+async function resumeFromToken() {
+  const token = load<string | null>(REMEMBER_KEY, null)
+  if (!token) return null
+  try {
+    const r = await api.resume(token)
+    save(REMEMBER_KEY, r.token)
+    return r.user
+  } catch (err) {
+    // Expired, revoked or already used: forget it. (Network errors keep it for next time.)
+    if (err instanceof ApiError && err.status === 401) save(REMEMBER_KEY, null)
+    return null
+  }
+}
 
 async function loadAccount(user: User, { fresh }: { fresh: boolean }) {
   const owner = load<string | null>(OWNER_KEY, null)
@@ -32,7 +59,13 @@ export async function initSession() {
     get().showToast(authError)
   }
   try {
-    const [{ methods }, { user }] = await Promise.all([api.config(), api.me()])
+    const [{ methods }, me] = await Promise.all([api.config(), api.me()])
+    let user = me.user
+    if (user) {
+      if (!load<string | null>(REMEMBER_KEY, null)) refreshRememberToken()
+    } else {
+      user = await resumeFromToken()
+    }
     get().set({ authMethods: methods, user })
     if (user) await loadAccount(user, { fresh: false })
     else if (load<string | null>(OWNER_KEY, null)) {
@@ -49,6 +82,7 @@ export async function initSession() {
 
 export async function completeSignIn(user: User) {
   get().set({ user, accountOpen: false })
+  refreshRememberToken()
   try {
     await loadAccount(user, { fresh: true })
     get().showToast(`Signed in as ${user.email}`)
@@ -60,12 +94,13 @@ export async function completeSignIn(user: User) {
 function forgetDevice() {
   get().clearPlaces()
   save(OWNER_KEY, null)
+  save(REMEMBER_KEY, null)
   get().set({ user: null, accountOpen: false })
 }
 
 export async function signOut() {
   try {
-    await api.logout()
+    await api.logout(load<string | null>(REMEMBER_KEY, null))
   } finally {
     forgetDevice()
     get().showToast('Signed out. Your places were removed from this car.')

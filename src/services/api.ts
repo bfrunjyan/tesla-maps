@@ -54,7 +54,9 @@ export const api = {
   login: (email: string, password: string) => request<{ user: User }>('POST', '/auth/login', { email, password }),
   emailStart: (email: string) => request<{ ok: true }>('POST', '/auth/email/start', { email }),
   emailVerify: (email: string, code: string) => request<{ user: User }>('POST', '/auth/email/verify', { email, code }),
-  logout: () => request<{ ok: true }>('POST', '/auth/logout', {}),
+  logout: (rememberToken?: string | null) => request<{ ok: true }>('POST', '/auth/logout', rememberToken ? { rememberToken } : {}),
+  remember: (previous?: string | null) => request<{ token: string }>('POST', '/auth/remember', previous ? { previous } : {}),
+  resume: (token: string) => request<{ user: User; token: string }>('POST', '/auth/resume', { token }),
   deleteAccount: () => request<{ ok: true }>('DELETE', '/auth/me'),
   googleUrl: (returnTo: string) => `/api/auth/google/start?return=${encodeURIComponent(returnTo)}`,
 
