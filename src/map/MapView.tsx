@@ -12,7 +12,7 @@ import { reverseGeocode } from '../services/search'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { applyLook, buildStyle, ROUTE, setTrafficVisible, trafficTileUrl } from './style'
-import { followZoom } from './camera'
+import { createNavZoom, followZoom } from './camera'
 import { setMap } from './mapApi'
 import { gpuName, isSlowGpu, watchFrameRate } from './performance'
 
@@ -121,13 +121,31 @@ export function MapView() {
 
     /* ------------------------------------------------------- camera */
     let lastHeading = 0
+    const navZoom = createNavZoom()
+    /** During guidance: zoom in for the turn ahead, back out once it's done. Null otherwise. */
+    function guidanceZoom(speed: number): number | null {
+      const nav = useStore.getState().nav
+      const guiding = nav?.status === 'active' || nav?.status === 'rerouting'
+      if (!guiding || !nav.route || !nav.progress) return null
+      const { maneuvers } = nav.route
+      const pr = nav.progress
+      const next = maneuvers[pr.nextIndex]
+      const prev = maneuvers[pr.nextIndex - 1]
+      return navZoom({
+        route: nav.route,
+        speed,
+        onRoute: pr.offRouteM < 30,
+        next: next ? { index: pr.nextIndex, type: next.type, toM: pr.toNextM } : null,
+        prev: prev ? { type: prev.type, pastM: pr.alongM - prev.atM } : null,
+      })
+    }
     function cameraFor(pos: Position) {
       const s = useStore.getState()
       // Dead zone: tiny heading changes don't rotate the map (the arrow still turns).
       if (pos.heading != null && Math.abs(angleDiff(lastHeading, pos.heading)) >= 3) lastHeading = pos.heading
       const navigating = !!s.nav?.route
       const h = map.getContainer().clientHeight
-      const zoom = followZoom({ navigating, speed: pos.speed, current: map.getZoom() })
+      const zoom = guidanceZoom(pos.speed) ?? followZoom({ navigating, speed: pos.speed, current: map.getZoom() })
       return {
         center: [pos.lon, pos.lat] as LngLat,
         bearing: s.northUp ? 0 : lastHeading,

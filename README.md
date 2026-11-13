@@ -127,6 +127,14 @@ data, `src/nav/energy.ts`), tagged Fastest / Shortest / Economy. Fastest is pre-
 starts after 10 s unless the driver touches the screen. Rerouting keeps the chosen
 preference (fastest or shortest). Travel times don't include live traffic.
 
+## Zoom while navigating
+
+During guidance the map zooms itself (`src/map/camera.ts`): a wider view between turns that
+eases out with speed, zooming in on the junction from about 14 seconds before a turn, fully
+in about 5 seconds before it, held through the turn and eased back out by 130 m after it.
+U-turns come in closest; exits, forks and merges a little less than turns; the destination
+like a turn. Braking on the approach never zooms back out.
+
 ## Accounts
 
 Drivers can sign in four ways; Home, Work, favorites and recent destinations then sync
@@ -210,6 +218,7 @@ instances or a licensed provider. Each provider sits behind one module in `src/s
 
 - `src/map/style.ts`: graphite map style
 - `src/map/MapView.tsx`: map, car arrow, follow camera, route line, long-press pin
+- `src/map/camera.ts`: follow-camera zoom, including zooming in for turns
 - `src/nav/controller.ts`: GPS, route progress, voice prompts, off-route rerouting, drive simulator
 - `src/nav/progress.ts`: snapping the car to the route, next turn, remaining time and distance
 - `src/components/`: search pill and panel, place card, guidance card, map tools
