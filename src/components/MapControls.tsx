@@ -64,11 +64,11 @@ export function MapControls() {
       >
         {battery ? (
           <>
-            <BatteryIcon pct={battery.pct} size={24} charging={charging} />
+            <BatteryIcon pct={battery.pct} size={21} charging={charging} />
             <span className="battery-chip__pct">{Math.round(battery.pct)}%</span>
           </>
         ) : (
-          <Car size={26} />
+          <Car size={22} />
         )}
       </button>
       <button
@@ -76,7 +76,7 @@ export function MapControls() {
         aria-label={user ? `Account: ${user.email}` : 'Sign in'}
         onClick={() => s.set({ accountOpen: true, toolsVisible: false })}
       >
-        {user ? <span className="avatar" aria-hidden>{(user.name ?? user.email)[0].toUpperCase()}</span> : <UserCircle size={28} />}
+        {user ? <span className="avatar" aria-hidden>{(user.name ?? user.email)[0].toUpperCase()}</span> : <UserCircle size={24} />}
       </button>
       <button
         className="surface compass"
@@ -92,7 +92,7 @@ export function MapControls() {
 
       {!follow && (
         <button className="surface tool-solo" aria-label="Recenter on car" onClick={() => s.set({ follow: true })}>
-          <NavigationArrow size={24} />
+          <NavigationArrow size={22} />
         </button>
       )}
 

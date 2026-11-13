@@ -75,7 +75,7 @@ export function SearchBox() {
       <div className="surface search-pill">
         {panelOpen ? (
           <>
-            <MagnifyingGlass className="search-pill__icon" size={22} weight="bold" aria-hidden />
+            <MagnifyingGlass className="search-pill__icon" size={20} weight="bold" aria-hidden />
             <input
               ref={inputRef}
               className="search-pill__input"
@@ -91,20 +91,20 @@ export function SearchBox() {
               }}
             />
             <button className="icon-btn" aria-label="Close search" onClick={closePanel}>
-              <X size={22} weight="bold" />
+              <X size={20} weight="bold" />
             </button>
           </>
         ) : (
           <>
             <button className="search-pill__trigger" onClick={() => openPanel()}>
-              <MagnifyingGlass size={22} weight="bold" aria-hidden />
+              <MagnifyingGlass size={20} weight="bold" aria-hidden />
               <span>Navigate</span>
             </button>
             <button className="icon-btn" aria-label="Navigate home (hold to change)" {...home}>
-              <House size={22} />
+              <House size={20} />
             </button>
             <button className="icon-btn" aria-label="Navigate to work (hold to change)" {...work}>
-              <Briefcase size={22} />
+              <Briefcase size={20} />
             </button>
           </>
         )}
