@@ -5,7 +5,7 @@ import { mapCenter } from '../map/mapApi'
 import { trafficTileUrl } from '../map/style'
 import { FALLBACK_CENTER } from '../nav/controller'
 import { categorySearch } from '../services/search'
-import { useStore } from '../state/store'
+import { isLite, useStore } from '../state/store'
 import { GpsIndicator } from './Location'
 import { SettingsPopover } from './SettingsPopover'
 
@@ -31,6 +31,7 @@ export function MapControls() {
   const satellite = useStore((s) => s.satellite)
   const showTraffic = useStore((s) => s.showTraffic)
   const settingsOpen = useStore((s) => s.settingsOpen)
+  const lite = useStore(isLite)
   const user = useStore((s) => s.user)
   const s = useStore.getState()
 
@@ -107,7 +108,11 @@ export function MapControls() {
           <Tool label="Show charging stations" active={showChargers} onClick={toggleChargers}>
             <Lightning size={24} />
           </Tool>
-          <Tool label="3D buildings" active={threeD} onClick={() => s.set({ threeD: !threeD })}>
+          <Tool
+            label="3D buildings"
+            active={threeD && !lite}
+            onClick={() => (lite ? s.showToast('3D buildings are off on the lite map. Change it in Settings → Map detail.') : s.set({ threeD: !threeD }))}
+          >
             <Cube size={24} />
           </Tool>
           <Tool label="Map settings" active={settingsOpen} onClick={() => s.set({ settingsOpen: !settingsOpen })}>

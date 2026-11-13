@@ -8,6 +8,7 @@ export type SearchMode = 'navigate' | 'set-home' | 'set-work'
 export type Lang = 'en-US' | 'ru-RU'
 export type ThemeSetting = 'auto' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
+export type MapDetail = 'auto' | 'full' | 'lite'
 /** GPS health as the driver should see it. 'ok' shows nothing. */
 export type GpsStatus = 'idle' | 'needs-permission' | 'finding' | 'ok' | 'weak' | 'lost' | 'denied' | 'unavailable'
 
@@ -41,6 +42,9 @@ interface State {
   satellite: boolean
   showTraffic: boolean
   themeSetting: ThemeSetting
+  /** Map detail setting; 'auto' uses autoLite, detected per car. */
+  mapDetail: MapDetail
+  autoLite: boolean
   theme: Theme
   settingsOpen: boolean
 
@@ -115,6 +119,8 @@ export const useStore = create<State & Actions>((set, get) => ({
   satellite: load('satellite', false),
   showTraffic: load('showTraffic', false),
   themeSetting: load<ThemeSetting>('themeSetting', 'auto'),
+  mapDetail: load<MapDetail>('mapDetail', 'auto'),
+  autoLite: load('autoLite', false),
   theme: 'dark',
   settingsOpen: false,
 
@@ -144,7 +150,7 @@ export const useStore = create<State & Actions>((set, get) => ({
 
   set: (patch) => {
     set(patch)
-    for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting'] as const) {
+    for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting', 'mapDetail', 'autoLite'] as const) {
       if (key in patch) save(key, patch[key])
     }
   },
@@ -195,3 +201,6 @@ export const useStore = create<State & Actions>((set, get) => ({
   },
   clearPlaces: () => get().setPlaces({ home: null, work: null, favorites: [], recents: [] }),
 }))
+
+/** Whether the lite map is in effect. */
+export const isLite = (s: { mapDetail: MapDetail; autoLite: boolean }) => s.mapDetail === 'lite' || (s.mapDetail === 'auto' && s.autoLite)

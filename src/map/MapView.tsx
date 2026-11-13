@@ -7,10 +7,11 @@ import { lerpAngle, lerpLngLat, type LngLat } from '../lib/geo'
 import { angleDiff } from '../nav/heading'
 import { FALLBACK_CENTER } from '../nav/controller'
 import { reverseGeocode } from '../services/search'
-import { useStore } from '../state/store'
+import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { applyLook, buildStyle, ROUTE, setTrafficVisible, trafficTileUrl } from './style'
 import { setMap } from './mapApi'
+import { gpuName, isSlowGpu, watchFrameRate } from './performance'
 
 const CAR_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
   <path d="M20 4 L32 34 L20 27.5 L8 34 Z" fill="${'#e5262f'}" stroke="#ffffff" stroke-opacity=".9" stroke-width="1.6" stroke-linejoin="round"/>
@@ -39,13 +40,19 @@ export function MapView() {
 
   useEffect(() => {
     if (!container.current) return
+    // Older car computers: start in lite mode straight away when the GPU is a known slow one.
+    if (useStore.getState().mapDetail === 'auto' && !useStore.getState().autoLite && isSlowGpu(gpuName())) {
+      useStore.getState().set({ autoLite: true })
+    }
     const s0 = useStore.getState()
+    const pixelRatioFor = (lite: boolean) => (lite ? 1 : window.devicePixelRatio || 1)
     const map = new MLMap({
       container: container.current,
       style: buildStyle({ theme: s0.theme, satellite: s0.satellite, trafficTiles: trafficTileUrl() }),
       center: [FALLBACK_CENTER.lon, FALLBACK_CENTER.lat],
       zoom: 16.4,
-      pitch: s0.northUp ? 0 : 55,
+      pitch: s0.northUp ? 0 : isLite(s0) ? 45 : 55,
+      pixelRatio: pixelRatioFor(isLite(s0)),
       maxPitch: 70,
       attributionControl: false,
       fadeDuration: 150,
@@ -103,7 +110,7 @@ export function MapView() {
       return {
         center: [pos.lon, pos.lat] as LngLat,
         bearing: s.northUp ? 0 : lastHeading,
-        pitch: s.northUp ? 0 : 55,
+        pitch: s.northUp ? 0 : isLite(s) ? 45 : 55,
         zoom,
         padding: { top: navigating && !s.northUp ? h * 0.32 : 0, bottom: 0, left: 0, right: 0 },
       }
@@ -148,8 +155,19 @@ export function MapView() {
 
     function applyLayerToggles() {
       const s = useStore.getState()
-      applyLook(map, s.theme, s.satellite, s.threeD, s.showPois)
+      applyLook(map, s.theme, s.satellite, s.threeD && !isLite(s), s.showPois)
       setTrafficVisible(map, s.showTraffic)
+    }
+
+    // Measured fallback: switch to lite if the map keeps drawing slowly while moving.
+    let stopFpsWatch: (() => void) | null = null
+    if (useStore.getState().mapDetail === 'auto' && !useStore.getState().autoLite) {
+      stopFpsWatch = watchFrameRate(map, (fps) => {
+        const st = useStore.getState()
+        if (st.mapDetail !== 'auto' || st.autoLite) return
+        st.set({ autoLite: true })
+        st.showToast(`Switched to the lite map for smoother driving (${fps} fps)`)
+      })
     }
 
     map.on('load', () => {
@@ -262,8 +280,14 @@ export function MapView() {
         s.showPois !== prev.showPois ||
         s.theme !== prev.theme ||
         s.satellite !== prev.satellite ||
-        s.showTraffic !== prev.showTraffic
+        s.showTraffic !== prev.showTraffic ||
+        isLite(s) !== isLite(prev)
       ) {
+        if (isLite(s) !== isLite(prev)) {
+          map.setPixelRatio(pixelRatioFor(isLite(s)))
+          if (s.follow && s.position) follow(s.position, 600) // apply the lite camera angle now
+          else if (!s.northUp) map.easeTo({ pitch: isLite(s) ? 45 : 55, duration: 600 })
+        }
         if (map.isStyleLoaded()) applyLayerToggles()
         else map.once('idle', applyLayerToggles)
       }
@@ -314,6 +338,7 @@ export function MapView() {
       ro.disconnect()
       cancelAnimationFrame(anim)
       window.clearTimeout(creditsTimer)
+      stopFpsWatch?.()
       setMap(null)
       map.remove()
     }

@@ -1,6 +1,6 @@
 import { CircleHalf, Moon, Sun } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
-import { useStore, type Lang, type ThemeSetting } from '../state/store'
+import { isLite, useStore, type Lang, type MapDetail, type ThemeSetting } from '../state/store'
 
 function Segmented<T extends string>({ label, value, options, onChange }: {
   label: string
@@ -23,11 +23,13 @@ function Segmented<T extends string>({ label, value, options, onChange }: {
   )
 }
 
-/** Map settings: appearance (like the car's Auto / Light / Dark) and voice language. */
+/** Map settings: appearance (like the car’s Auto / Light / Dark), map detail and voice language. */
 export function SettingsPopover() {
   const themeSetting = useStore((s) => s.themeSetting)
   const theme = useStore((s) => s.theme)
   const lang = useStore((s) => s.lang)
+  const mapDetail = useStore((s) => s.mapDetail)
+  const lite = useStore(isLite)
   const s = useStore.getState()
 
   return (
@@ -45,6 +47,21 @@ export function SettingsPopover() {
       {themeSetting === 'auto' && (
         <p className="setting__hint">
           Now {theme}. Follows your display’s dark mode, otherwise sunrise and sunset where you are.
+        </p>
+      )}
+      <Segmented<MapDetail>
+        label="Map detail"
+        value={mapDetail}
+        onChange={(v) => s.set({ mapDetail: v })}
+        options={[
+          { value: 'auto', label: 'Auto' },
+          { value: 'full', label: 'Full' },
+          { value: 'lite', label: 'Lite' },
+        ]}
+      />
+      {mapDetail === 'auto' && (
+        <p className="setting__hint">
+          {lite ? 'Lite on this car, for smoother driving: flat buildings, lighter graphics.' : 'Full detail. Switches to lite if this car draws the map slowly.'}
         </p>
       )}
       <Segmented<Lang>
