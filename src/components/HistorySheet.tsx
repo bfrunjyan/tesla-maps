@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, CaretLeft, CaretRight, X } from '@phosphor-icons/react'
 import { fillPeriod, localDay, periodFor, shiftAnchor, sumTotals, whPerKm, type Bucket, type DayTotal, type Granularity, type Totals } from '../history/driveLog'
-import { fetchDays } from '../history/recorder'
+import { fetchDays, recordedToday } from '../history/recorder'
 import { useStore } from '../state/store'
 import { vehicleSpec } from '../vehicle/catalog'
 
 type Metric = 'distance' | 'energy'
+
+/** How often an open history refreshes. */
+const REFRESH_MS = 20_000
+
+/** Kilometres this device recorded today, kept current while the sheet is open. */
+function useRecordedToday(): number {
+  const [m, setM] = useState(recordedToday)
+  useEffect(() => {
+    const t = window.setInterval(() => setM(recordedToday()), 5_000)
+    return () => window.clearInterval(t)
+  }, [])
+  return m / 1000
+}
 
 const GRANULARITIES: { value: Granularity; label: string; per: string; whole: string; current: string }[] = [
   { value: 'day', label: 'Days', per: 'per day', whole: 'Whole week', current: 'This week' },
@@ -95,18 +108,25 @@ function History({ signedIn }: { signedIn: boolean }) {
   const blank = useMemo(() => periodFor(g, anchor, today), [g, anchor, today])
   useEffect(() => {
     let stale = false
-    setState('loading')
-    fetchDays(blank.from, blank.to, signedIn)
-      .then((d) => {
-        if (stale) return
-        setDays(d)
-        setState('ready')
-      })
-      .catch(() => !stale && setState('error'))
+    const load = (quiet: boolean) => {
+      if (!quiet) setState('loading')
+      fetchDays(blank.from, blank.to, signedIn)
+        .then((d) => {
+          if (stale) return
+          setDays(d)
+          setState('ready')
+        })
+        .catch(() => !stale && !quiet && setState('error'))
+    }
+    load(false)
+    // Live while open: today's driving shows up as it happens, without a flicker.
+    const timer = window.setInterval(() => load(true), REFRESH_MS)
     return () => {
       stale = true
+      window.clearInterval(timer)
     }
   }, [blank, signedIn, attempt])
+  const todayKm = useRecordedToday()
 
   const period = fillPeriod(blank, days ?? [])
   const meta = GRANULARITIES.find((x) => x.value === g)!
@@ -195,7 +215,7 @@ function History({ signedIn }: { signedIn: boolean }) {
       <PriceSetting />
 
       <p className="hist__note">
-        Mapic records drives while it’s open on the car screen. Energy is an estimate {spec ? `for your ${spec.title}` : 'for a Model Y-class car'}, from
+        {todayKm > 0 ? `Recorded on this screen today: ${km(todayKm * 1000)} km. ` : ''}Mapic records drives while it’s open on the car screen. Energy is an estimate {spec ? `for your ${spec.title}` : 'for a Model Y-class car'}, from
         distance, speed and hills.
       </p>
     </div>

@@ -19,6 +19,13 @@ describe('what counts as driving', () => {
     expect(countsAsDriving(fix(0, 0, 6), fix(1000, 0, 6), 13)).toBe(true)
   })
 
+  it('counts sparse fixes and the car’s rougher GPS', () => {
+    // A browser that sends a fix every 20 seconds, 220 m apart.
+    expect(countsAsDriving(fix(0), fix(20_000), 220)).toBe(true)
+    // Between buildings the car reports 80 m accuracy.
+    expect(countsAsDriving(fix(0, 12, 80), fix(1000, 12, 80), 12)).toBe(true)
+  })
+
   it('ignores GPS jumps, gaps and poor fixes', () => {
     expect(countsAsDriving(fix(0), fix(1000), 400)).toBe(false) // 1,440 km/h
     expect(countsAsDriving(fix(0), fix(60_000), 600)).toBe(false) // a minute in a tunnel

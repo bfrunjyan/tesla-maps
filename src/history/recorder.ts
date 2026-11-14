@@ -106,12 +106,33 @@ export function setDriveOwner(userId: string | null) {
   if (userId) void syncDrives()
 }
 
-/** The account's history between two days, this device's unsent driving included. */
+/**
+ * The account's history between two days. This device's own log counts too, so driving
+ * that hasn't reached the account yet (no connection, or the account refused it) still
+ * shows: each day is at least what this device recorded.
+ */
 export async function fetchDays(from: string, to: string, signedIn: boolean): Promise<DayTotal[]> {
-  if (!signedIn) return localDays().filter((d) => d.day >= from && d.day <= to)
+  const local = localDays().filter((d) => d.day >= from && d.day <= to)
+  if (!signedIn) return local
   await syncDrives()
   const { days } = await api.drives(from, to)
-  return days
+  return atLeastLocal(days, local)
+}
+
+/** Each day's account total, raised to this device's own figures where those are higher. */
+export function atLeastLocal(account: DayTotal[], local: DayTotal[]): DayTotal[] {
+  const byDay = new Map(account.map((d) => [d.day, { ...d }]))
+  for (const l of local) {
+    const a = byDay.get(l.day)
+    if (!a) byDay.set(l.day, { ...l, metres: Math.round(l.metres), wh: Math.round(l.wh), seconds: Math.round(l.seconds) })
+    else if (l.metres > a.metres) byDay.set(l.day, { day: l.day, metres: Math.round(l.metres), wh: Math.max(a.wh, Math.round(l.wh)), seconds: Math.max(a.seconds, Math.round(l.seconds)) })
+  }
+  return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day))
+}
+
+/** Metres this device recorded today: shown in the history so a drive can be checked at once. */
+export function recordedToday(): number {
+  return log.days[localDay(Date.now())]?.metres ?? 0
 }
 
 let started = false

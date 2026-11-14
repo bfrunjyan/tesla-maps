@@ -38,13 +38,17 @@ export function weekStart(day: string): string {
 
 /* ------------------------------------------------------------ recording */
 
-/** Fixes further apart than this are a gap (tunnel, app in the background), not driving time. */
-export const MAX_GAP_S = 10
+/**
+ * Fixes further apart than this are a gap (tunnel, app in the background), not driving
+ * time. Generous, as a car's browser may send its position only every few seconds.
+ */
+export const MAX_GAP_S = 30
 /** Slower than walking pace is standing still or GPS drift. */
 export const MIN_SPEED_MPS = 1.5
 /** Faster than 250 km/h is a GPS jump. */
 export const MAX_SPEED_MPS = 70
-const MAX_ACCURACY_M = 40
+/** Fixes vaguer than this are skipped (the car's browser may report a wide margin even when on track). */
+const MAX_ACCURACY_M = 100
 
 export interface Fix {
   ts: number

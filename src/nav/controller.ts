@@ -243,14 +243,26 @@ function stepWh(moved: number, pos: Position, route: Route | null, progress: Nav
   return onRoute ? route.kWh! * 1000 * (along / route.totalM) : (moved / 1000) * baseWhPerKm(pos.speed * 3.6)
 }
 
+/**
+ * When the last fix for driving history arrived, by this device's own clock. The time
+ * between fixes is measured here rather than from the browser's fix timestamps: a car's
+ * browser can repeat them or report them in another unit, which made every stretch look
+ * impossible and recorded nothing.
+ */
+let historyFixAt: number | null = null
+
 /** Driving history: distance, energy and time of each real stretch of driving. */
 function trackHistory(prev: Position | null, pos: Position, source: 'gps' | 'fallback' | 'sim', route: Route | null, progress: NavProgress | null, lastProgress: NavProgress | null) {
   // Simulated drives count only on a development machine, never on the live site.
-  if (!prev || (source !== 'gps' && !(source === 'sim' && import.meta.env.DEV))) return
+  if (source !== 'gps' && !(source === 'sim' && import.meta.env.DEV)) return
+  const now = Date.now()
+  const lastAt = historyFixAt
+  historyFixAt = now
+  if (!prev || lastAt == null) return
   const moved = distance([prev.lon, prev.lat], [pos.lon, pos.lat])
-  if (!countsAsDriving(prev, pos, moved)) return
+  if (!countsAsDriving({ ts: lastAt, speed: prev.speed, accuracy: prev.accuracy }, { ts: now, speed: pos.speed, accuracy: pos.accuracy }, moved)) return
   const factor = vehicleSpec(get().vehicle)?.factor ?? 1
-  recordDriving(pos.ts, { metres: moved, wh: stepWh(moved, pos, route, progress, lastProgress) * factor, seconds: (pos.ts - prev.ts) / 1000 })
+  recordDriving(now, { metres: moved, wh: stepWh(moved, pos, route, progress, lastProgress) * factor, seconds: (now - lastAt) / 1000 })
 }
 
 function trackBattery(prev: Position | null, pos: Position, route: Route | null, progress: NavProgress | null, lastProgress: NavProgress | null) {
