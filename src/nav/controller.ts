@@ -1,3 +1,5 @@
+import { countsAsDriving } from '../history/driveLog'
+import { recordDriving } from '../history/recorder'
 import { bearing, distance, type LngLat } from '../lib/geo'
 import { cancelSpeech, setVoiceEnabled, speak } from '../lib/voice'
 import { reverseGeocode } from '../services/search'
@@ -217,18 +219,33 @@ let pendingWh = 0
  * it uses the route's own figure (which includes climbs), so charge at arrival stays
  * steady; otherwise a flat-road estimate from speed.
  */
+/**
+ * Energy for the stretch between two fixes, for a Model Y-class car (scale by the car's
+ * factor): the route's share of its estimate while on the route, else by speed.
+ */
+function stepWh(moved: number, pos: Position, route: Route | null, progress: NavProgress | null, lastProgress: NavProgress | null) {
+  const along = progress && lastProgress ? progress.alongM - lastProgress.alongM : 0
+  const onRoute = route && typeof route.kWh === 'number' && progress && progress.offRouteM < 30 && along > 0
+  return onRoute ? route.kWh! * 1000 * (along / route.totalM) : (moved / 1000) * baseWhPerKm(pos.speed * 3.6)
+}
+
+/** Driving history: distance, energy and time of each real stretch of driving. */
+function trackHistory(prev: Position | null, pos: Position, source: 'gps' | 'fallback' | 'sim', route: Route | null, progress: NavProgress | null, lastProgress: NavProgress | null) {
+  // Simulated drives count only on a development machine, never on the live site.
+  if (!prev || (source !== 'gps' && !(source === 'sim' && import.meta.env.DEV))) return
+  const moved = distance([prev.lon, prev.lat], [pos.lon, pos.lat])
+  if (!countsAsDriving(prev, pos, moved)) return
+  const factor = vehicleSpec(get().vehicle)?.factor ?? 1
+  recordDriving(pos.ts, { metres: moved, wh: stepWh(moved, pos, route, progress, lastProgress) * factor, seconds: (pos.ts - prev.ts) / 1000 })
+}
+
 function trackBattery(prev: Position | null, pos: Position, route: Route | null, progress: NavProgress | null, lastProgress: NavProgress | null) {
   const s = get()
   const spec = vehicleSpec(s.vehicle)
   if (!spec || !s.battery || !prev) return
   const moved = distance([prev.lon, prev.lat], [pos.lon, pos.lat])
   if (moved < 1 || moved > 500) return // standing still, or a GPS jump
-  const along = progress && lastProgress ? progress.alongM - lastProgress.alongM : 0
-  const onRoute = route && typeof route.kWh === 'number' && progress && progress.offRouteM < 30 && along > 0
-  const wh = onRoute
-    ? route.kWh! * 1000 * (along / route.totalM)
-    : (moved / 1000) * baseWhPerKm(pos.speed * 3.6)
-  pendingWh += wh * spec.factor
+  pendingWh += stepWh(moved, pos, route, progress, lastProgress) * spec.factor
   const deltaPct = whToPct(pendingWh, spec.capacityKWh)
   if (deltaPct >= 0.25) {
     pendingWh = 0
@@ -281,6 +298,7 @@ export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
   const pos = { ...fix, heading: smoothHeading(prev?.heading ?? null, raw, fix.speed) }
   s.set({ position: pos, positionSource: source })
   if (source !== 'fallback') trackBattery(prev, pos, route, progress, nav?.progress ?? null)
+  trackHistory(prev, pos, source, route, progress, nav?.progress ?? null)
   updateAreaLabel(pos)
 
   if (!route || !progress || !nav) return

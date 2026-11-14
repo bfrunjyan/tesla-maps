@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { ArrowClockwise, CircleNotch, SignOut, Trash, X } from '@phosphor-icons/react'
+import { ArrowClockwise, CaretRight, ChartBar, CircleNotch, SignOut, Trash, X } from '@phosphor-icons/react'
+import { localDay, sumTotals, weekStart } from '../history/driveLog'
+import { fetchDays } from '../history/recorder'
 import { api, ApiError } from '../services/api'
 import { completeSignIn, deleteAccount, signOut } from '../state/session'
 import { useStore } from '../state/store'
@@ -142,6 +144,39 @@ function QrPairing() {
   )
 }
 
+/** The way into driving history, with this week's distance so far. */
+function HistoryEntry() {
+  const set = useStore((s) => s.set)
+  const [week, setWeek] = useState<string | null>(null)
+  useEffect(() => {
+    let stale = false
+    const today = localDay(Date.now())
+    const from = weekStart(today)
+    fetchDays(from, today, true)
+      .then((days) => {
+        if (stale) return
+        const km = sumTotals(days).metres / 1000
+        setWeek(`${km < 10 ? km.toFixed(1) : Math.round(km)} km this week`)
+      })
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
+  }, [])
+  return (
+    <button className="account__entry" onClick={() => set({ accountOpen: false, historyOpen: true })}>
+      <span className="account__entry-icon" aria-hidden>
+        <ChartBar size={22} weight="bold" />
+      </span>
+      <span className="account__entry-text">
+        <span className="account__entry-title">Driving history</span>
+        <span className="account__entry-sub">{week ?? 'Distance and energy by day, week and month'}</span>
+      </span>
+      <CaretRight size={20} weight="bold" aria-hidden className="account__entry-caret" />
+    </button>
+  )
+}
+
 function SignedIn() {
   const user = useStore((s) => s.user)!
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -157,7 +192,8 @@ function SignedIn() {
           <span className="account__email">{user.email}</span>
         </div>
       </div>
-      <p className="sheet__text">Home, Work, favorites and recent destinations are saved to your account and sync to any car you sign in to.</p>
+      <HistoryEntry />
+      <p className="sheet__text">Home, Work, favorites, recent destinations and driving history are saved to your account and sync to any car you sign in to.</p>
       {error && <p className="field__error" role="alert">{error}</p>}
       {confirmDelete ? (
         <div className="account__confirm">

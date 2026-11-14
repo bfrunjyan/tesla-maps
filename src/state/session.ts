@@ -1,3 +1,4 @@
+import { setDriveOwner, startDriveSync, syncDrives } from '../history/recorder'
 import { load, save } from '../lib/storage'
 import { api, ApiError, type User } from '../services/api'
 import { forgetTesla, loadTesla, readTesla, showTeslaOutcome, startTeslaSync } from '../vehicle/tesla'
@@ -47,6 +48,8 @@ async function loadAccount(user: User, { fresh }: { fresh: boolean }) {
     : await api.places()
   save(OWNER_KEY, user.id)
   get().setPlaces(places)
+  // Driving recorded here before signing in joins this account.
+  setDriveOwner(user.id)
   // The car: the account's choice wins; a car picked before signing in is saved to the account.
   try {
     const { vehicle } = await api.vehicle()
@@ -79,16 +82,20 @@ export async function initSession() {
     }
     get().set({ authMethods: methods, user })
     if (user) await loadAccount(user, { fresh: false })
-    else if (load<string | null>(OWNER_KEY, null)) {
-      // Session ended elsewhere (signed out, expired): don't leave someone's places on screen.
-      get().clearPlaces()
-      save(OWNER_KEY, null)
+    else {
+      if (load<string | null>(OWNER_KEY, null)) {
+        // Session ended elsewhere (signed out, expired): don't leave someone's places on screen.
+        get().clearPlaces()
+        save(OWNER_KEY, null)
+      }
+      setDriveOwner(null)
     }
   } catch {
     /* offline or API down: keep cached places, try again next load */
   } finally {
     get().set({ authReady: true })
   }
+  startDriveSync()
   // Connect Tesla: the linked car's level, then keep it current while the app is open.
   await loadTesla()
   showTeslaOutcome(teslaOutcome)
@@ -112,12 +119,15 @@ function forgetDevice() {
   get().clearPlaces()
   save(OWNER_KEY, null)
   save(REMEMBER_KEY, null)
-  get().set({ user: null, accountOpen: false })
+  get().set({ user: null, accountOpen: false, historyOpen: false })
   forgetTesla()
+  setDriveOwner(null)
 }
 
 export async function signOut() {
   try {
+    // Driving not yet sent goes to the account before this car forgets it.
+    await syncDrives()
     await api.logout(load<string | null>(REMEMBER_KEY, null))
   } finally {
     forgetDevice()

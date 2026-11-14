@@ -70,6 +70,13 @@ export const api = {
   vehicle: () => request<{ vehicle: Vehicle | null }>('GET', '/vehicle'),
   setVehicle: (vehicle: Vehicle | null) => request<{ ok: true }>('PUT', '/vehicle', { vehicle }),
 
+  /** Driving history between two days (YYYY-MM-DD), all the account's devices added up. */
+  drives: (from: string, to: string) =>
+    request<{ days: { day: string; metres: number; wh: number; seconds: number }[] }>('GET', `/drives?from=${from}&to=${to}`),
+  /** This device's running totals for the days given. */
+  saveDrives: (logId: string, days: { day: string; metres: number; wh: number; seconds: number }[]) =>
+    request<{ ok: true }>('PUT', '/drives', { logId, days }),
+
   teslaStatus: () => request<TeslaLink>('GET', '/tesla/status'),
   /** Asks the car for its battery now (the server spaces these out; Tesla bills each one). */
   teslaRead: () => request<TeslaLink & { note: TeslaNote }>('POST', '/tesla/read', {}),

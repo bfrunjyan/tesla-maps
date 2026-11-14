@@ -14,6 +14,7 @@ import { useStore } from './state/store'
 
 // Loaded on demand: sign-in screens and the phone link page aren't needed to show the map.
 const AccountSheet = lazy(() => import('./components/AccountSheet').then((m) => ({ default: m.AccountSheet })))
+const HistorySheet = lazy(() => import('./components/HistorySheet').then((m) => ({ default: m.HistorySheet })))
 const CarSheet = lazy(() => import('./components/CarSheet').then((m) => ({ default: m.CarSheet })))
 // The Google map (a test) is loaded only when switched on.
 const GoogleMapView = lazy(() => import('./map/GoogleMapView').then((m) => ({ default: m.GoogleMapView })))
@@ -46,6 +47,7 @@ function MapApp() {
   const areaLabel = useStore((s) => s.areaLabel)
   const closePanel = useStore((s) => s.closePanel)
   const accountOpen = useStore((s) => s.accountOpen)
+  const historyOpen = useStore((s) => s.historyOpen)
   const carSheetOpen = useStore((s) => s.carSheetOpen)
   const chargerBar = useStore((s) => s.showChargers && !s.nav)
   const google = useStore((s) => usingGoogle(s))
@@ -82,8 +84,13 @@ function MapApp() {
           <AccountSheet />
         </Suspense>
       )}
-      {/* One sheet at a time: the location explainer waits behind the account and car sheets. */}
-      {!accountOpen && !carSheetOpen && <LocationSheet />}
+      {historyOpen && (
+        <Suspense fallback={null}>
+          <HistorySheet />
+        </Suspense>
+      )}
+      {/* One sheet at a time: the location explainer waits behind the account, history and car sheets. */}
+      {!accountOpen && !carSheetOpen && !historyOpen && <LocationSheet />}
       {carSheetOpen && (
         <Suspense fallback={null}>
           <CarSheet />

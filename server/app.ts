@@ -10,6 +10,7 @@ import { signInCodeEmail } from './lib/emailTemplates.ts'
 import { csrfGuard, loadSession, type AppEnv } from './lib/session.ts'
 import { auth } from './routes/auth.ts'
 import { chargers } from './routes/chargers.ts'
+import { drives } from './routes/drives.ts'
 import { tesla } from './routes/tesla.ts'
 import { vehicle } from './routes/vehicle.ts'
 import { places } from './routes/places.ts'
@@ -61,6 +62,7 @@ app.route('/api/auth', auth)
 app.route('/api/places', places)
 app.route('/api/chargers', chargers)
 app.route('/api/vehicle', vehicle)
+app.route('/api/drives', drives)
 app.route('/api/tesla', tesla)
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404))
 

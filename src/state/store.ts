@@ -109,6 +109,8 @@ interface State {
   authReady: boolean
   authMethods: AuthMethods | null
   accountOpen: boolean
+  /** The driving history sheet (opened from the account). */
+  historyOpen: boolean
 }
 
 interface Actions {
@@ -217,6 +219,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   authReady: false,
   authMethods: null,
   accountOpen: false,
+  historyOpen: false,
 
   set: (patch) => {
     set(patch)

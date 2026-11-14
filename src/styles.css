@@ -30,6 +30,11 @@
   /* Square buttons at the top right; the tool column below is the same width. */
   --chip: 46px;
 
+  /* Accent as text and chart ink: lighter at night so it reads on graphite
+     (#6a8ff2 passes 3:1 on the dark surface; the base accent does not). */
+  --accent-text: #8fb0ff;
+  --chart-ink: #6a8ff2;
+
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.25);
 
@@ -58,6 +63,8 @@
   --area-text: #171a20;
   --area-shadow: 0 0 3px rgba(255, 255, 255, 0.9);
   --shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.1);
+  --accent-text: #3459c4;
+  --chart-ink: #3e6ae1;
   color-scheme: light;
 }
 
@@ -737,6 +744,185 @@ h2, p { margin: 0; }
 .account__email { font-size: 15px; color: var(--text-muted); overflow-wrap: anywhere; }
 .account__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .account__actions .btn { flex: 1 1 160px; }
+/* The way into driving history. */
+.account__entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 68px;
+  margin-bottom: 14px;
+  padding: 10px 14px 10px 10px;
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  text-align: left;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease;
+}
+.account__entry:active { transform: scale(0.985); background: var(--surface-press); }
+.account__entry-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--chart-ink) 16%, transparent);
+  color: var(--accent-text);
+}
+.account__entry-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.account__entry-title { font-size: 16px; font-weight: 700; }
+.account__entry-sub { font-size: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.account__entry-caret { flex: none; color: var(--text-faint); }
+
+/* ------------------------------------------------------- driving history */
+.hist { width: min(780px, 100%); }
+.hist__head { justify-content: flex-start; gap: 4px; }
+.hist__head .sheet__title { flex: 1; }
+.hist__head .icon-btn:first-child + .sheet__title { padding-left: 2px; }
+.hist__body { display: flex; flex-direction: column; gap: 22px; padding: 6px 16px 0 0; }
+
+.hist__filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.hist__granularity { flex: 0 1 330px; background: var(--surface-raised); }
+.hist__period { display: flex; align-items: center; gap: 2px; }
+.hist__period-title { min-width: 16ch; text-align: center; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.icon-btn:disabled { opacity: 0.3; cursor: default; }
+.icon-btn:disabled:active { transform: none; background: none; }
+
+.hist__summary { display: flex; flex-direction: column; gap: 10px; transition: opacity 200ms ease; }
+.hist__summary[data-loading='true'] { opacity: 0.55; }
+.hist__scope { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; min-height: 26px; }
+.hist__scope-name { font-size: 15px; font-weight: 700; }
+.hist__link {
+  padding: 8px 0;
+  margin: -8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.hist__totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  border-block: 1px solid var(--divider);
+}
+.hist__total { padding: 14px 14px 14px 0; min-width: 0; }
+.hist__total + .hist__total { padding-left: 18px; border-left: 1px solid var(--divider); }
+.hist__total dt { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.hist__total dd { display: flex; align-items: baseline; gap: 5px; margin: 6px 0 0; white-space: nowrap; }
+.hist__total-value { font-size: 30px; font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+.hist__total-unit { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+
+.hist__chart-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.hist__chart-title { margin: 0; font-size: 15px; font-weight: 700; }
+.hist__metric { flex: 0 0 170px; background: var(--surface-raised); }
+.hist__metric .segmented__opt { min-height: 42px; font-variant-numeric: tabular-nums; }
+.hist__message { display: grid; place-content: center; justify-items: center; gap: 14px; height: 250px; text-align: center; color: var(--text-muted); }
+.hist__note { max-width: 72ch; font-size: 13px; line-height: 1.5; color: var(--text-faint); }
+
+/* Column chart: one series, so no legend; the heading names it. Hairline grid,
+   bars capped at 24 px with a rounded top and a square foot on the baseline. */
+.chart { --axis: 44px; --labels: 36px; position: relative; }
+.chart__plot { position: relative; height: 250px; padding-left: var(--axis); }
+.chart__grid { position: absolute; inset: 0 0 var(--labels) var(--axis); pointer-events: none; }
+.chart__gridline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--divider); }
+.chart__gridline:first-child { border-top-color: color-mix(in srgb, var(--text) 22%, transparent); }
+.chart__tick {
+  position: absolute;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.chart__unit { position: absolute; bottom: calc(100% + 10px); right: calc(100% + 10px); font-size: 12px; font-weight: 600; color: var(--text-faint); }
+.chart__cols { display: grid; height: 100%; transition: opacity 200ms ease; }
+.chart[data-loading='true'] .chart__cols { opacity: 0.55; }
+.chart__col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: background-color 140ms ease;
+}
+.chart__col[aria-pressed='true'] { background: var(--hover); }
+.chart__col:disabled { cursor: default; }
+.chart__col:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.chart__slot { position: relative; display: flex; flex: 1; align-items: flex-end; justify-content: center; }
+.chart__bar {
+  position: relative;
+  width: min(24px, 56%);
+  min-height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-ink);
+  transition: height 320ms var(--ease-out), background-color 160ms ease, transform 140ms var(--ease-out);
+  transform-origin: 50% 100%;
+}
+/* A chosen bar keeps full ink; the rest step back so it reads at a glance. */
+.chart[data-has-selection='true'] .chart__col:not([aria-pressed='true']) .chart__bar { background: color-mix(in srgb, var(--chart-ink) 38%, transparent); }
+.chart__col:not(:disabled):active .chart__bar { transform: scaleX(1.12); }
+.chart__value {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.chart__label {
+  display: grid;
+  place-items: center;
+  height: var(--labels);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.chart__col[data-current='true'] .chart__label { color: var(--text); font-weight: 800; }
+.chart__col:disabled .chart__label { color: var(--text-faint); opacity: 0.6; }
+.chart__empty {
+  position: absolute;
+  inset: 0 0 var(--labels) var(--axis);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .chart__col:not(:disabled):hover { background: var(--hover); }
+  .account__entry:hover { filter: brightness(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart__bar { transition: none; }
+}
+/* Narrow screens (a phone): totals in two rows. */
+@media (max-width: 560px) {
+  .hist__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hist__total:nth-child(3) { padding-left: 0; border-left: 0; border-top: 1px solid var(--divider); }
+  .hist__total:nth-child(4) { border-top: 1px solid var(--divider); }
+  .hist__total-value { font-size: 24px; }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* Phone page from the QR code */
 .link {
