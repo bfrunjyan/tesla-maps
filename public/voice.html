@@ -2,6 +2,7 @@
 <!--
   Voice check: shows what this browser can do for spoken directions. Open it in the
   car (mapic.site/voice.html), tap the three buttons, and note what you hear.
+  The Memory row shows how much memory the car's browser gives a page.
   Stands alone: no app code, nothing is sent anywhere.
 -->
 <html lang="en">
@@ -42,6 +43,7 @@
       <tr><th>2 · Mapic's way</th><td id="r-app">not tried</td></tr>
       <tr><th>3 · Beep (sound engine)</th><td id="r-tone">not tried</td></tr>
       <tr><th>3 · Beep (audio file)</th><td id="r-file">not tried</td></tr>
+      <tr><th>Memory</th><td id="r-mem"></td></tr>
       <tr><th>Browser</th><td id="r-ua"></td></tr>
     </table>
     <script>
@@ -51,6 +53,15 @@
       var PHRASE = 'Voice check. In two hundred metres, turn left.'
 
       $('r-ua').textContent = navigator.userAgent
+      // How much memory this browser gives a page: the map tab crashes when it runs out.
+      ;(function () {
+        var parts = []
+        if (navigator.deviceMemory) parts.push('device: ' + navigator.deviceMemory + ' GB or more')
+        var m = window.performance && performance.memory
+        if (m && m.jsHeapSizeLimit) parts.push('page limit: ' + Math.round(m.jsHeapSizeLimit / 1048576) + ' MB')
+        if (navigator.hardwareConcurrency) parts.push(navigator.hardwareConcurrency + ' processor cores')
+        $('r-mem').textContent = parts.length ? parts.join(', ') : 'This browser does not say'
+      })()
       set('r-engine', synth ? 'yes' : 'no', synth ? 'Present' : 'Missing: this browser cannot speak text')
 
       function showVoices() {

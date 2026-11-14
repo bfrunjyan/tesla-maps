@@ -4,6 +4,8 @@
 //   npm run build && PORT=8899 APP_URL=http://localhost:8899 node server/index.ts &
 //   npm run perf                      # frame rate: full/lite × CPU 1x/4x
 //   npm run perf -- --memory          # memory over one complete simulated drive
+//   npm run perf -- --memory --map=google --to=Zvartnots --minutes=20 [--detail=lite]
+//                                     # a longer drive, on the Google map (needs the key in the build)
 //
 // Limits: CPU throttling imitates a slower processor, not a slower GPU; real
 // older-car numbers need the car itself.
@@ -14,6 +16,10 @@ const URL = args.get('url') ?? 'http://localhost:8899/?dev'
 const SECONDS = Number(args.get('seconds') ?? 15)
 const CHROME = args.get('chrome') ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const REPUBLIC_SQUARE = { latitude: 40.1777, longitude: 44.5126, accuracy: 10 }
+const MAP = args.get('map') ?? 'standard'
+const TO = args.get('to') ?? 'Cascade'
+const MINUTES = Number(args.get('minutes') ?? 6)
+const DETAIL = args.get('detail') ?? 'full' // memory drive only: full or lite
 
 const browser = await puppeteer.launch({
   executablePath: CHROME,
@@ -28,20 +34,28 @@ async function startDrive(detail) {
   await ctx.overridePermissions(new globalThis.URL(URL).origin, ['geolocation'])
   const page = await ctx.newPage()
   await page.setGeolocation(REPUBLIC_SQUARE)
-  await page.evaluateOnNewDocument((d) => {
+  await page.evaluateOnNewDocument((d, m) => {
     localStorage.setItem('carnav:mapDetail', JSON.stringify(d))
     localStorage.setItem('carnav:themeSetting', '"dark"')
-  }, detail)
+    localStorage.setItem('carnav:mapProvider', JSON.stringify(m))
+  }, detail, MAP)
   await page.goto(URL, { waitUntil: 'networkidle2' })
-  await page.waitForSelector('canvas.maplibregl-canvas')
+  await page.waitForSelector(MAP === 'google' ? '.gm-style' : 'canvas.maplibregl-canvas', { timeout: 30000 })
   await page.click('.search-pill__trigger')
-  await page.type('.search-pill__input', 'Cascade')
-  await page.waitForFunction(() => [...document.querySelectorAll('.row')].some((r) => r.textContent?.includes('Tamanyan')), { timeout: 20000 })
-  await page.evaluate(() => [...document.querySelectorAll('.row')].find((r) => r.textContent?.includes('Tamanyan'))?.click())
+  await page.type('.search-pill__input', TO)
+  // Cascade: the one on Tamanyan Street. Anything else: the first result that names it.
+  const pick = TO === 'Cascade' ? 'Tamanyan' : TO
+  await page.waitForFunction((t) => [...document.querySelectorAll('.row')].some((r) => r.textContent?.includes(t)), { timeout: 20000 }, pick)
+  await page.evaluate((t) => [...document.querySelectorAll('.row')].find((r) => r.textContent?.includes(t))?.click(), pick)
   // Route preview: start the pre-selected (fastest) route.
-  await page.waitForSelector('.route-preview__go', { timeout: 30000 })
-  await page.click('.route-preview__go')
-  await page.waitForSelector('.guide__next', { timeout: 20000 })
+  // Wait until the routes are in: a tap on the still-disabled button would only stop the countdown.
+  await page.waitForSelector('.route-preview__go:not([disabled])', { timeout: 30000 })
+  await page.click('.route-preview__go').catch(() => {})
+  await page.waitForSelector('.guide__next', { timeout: 60000 }).catch(async (err) => {
+    // Say what was on screen instead, so a failed setup is easy to read.
+    console.log('Trip did not start. On screen:', await page.evaluate(() => document.querySelector('.left-column')?.textContent?.slice(0, 300)))
+    throw err
+  }) // or the preview's own countdown starts it
   await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent?.includes('Simulate drive'))?.click())
   await new Promise((r) => setTimeout(r, 3000)) // let the camera settle into follow mode
   return { ctx, page, cdp: await page.createCDPSession() }
@@ -72,11 +86,28 @@ async function measureFrames(page, seconds) {
   }, seconds * 1000)
 }
 
+/** Resident memory (MB) of Chrome's renderer and GPU processes: what the car's browser runs out of. */
+async function processMB() {
+  const { execSync } = await import('node:child_process')
+  const root = browser.process()?.pid
+  const rows = execSync('ps -A -o pid=,ppid=,rss=,command=', { encoding: 'utf8' }).trim().split('\n').map((l) => {
+    const [pid, ppid, rss, ...cmd] = l.trim().split(/\s+/)
+    return { pid: +pid, ppid: +ppid, rss: +rss, cmd: cmd.join(' ') }
+  })
+  const mine = new Set([root])
+  for (let grew = true; grew; ) {
+    grew = false
+    for (const r of rows) if (!mine.has(r.pid) && mine.has(r.ppid)) (mine.add(r.pid), (grew = true))
+  }
+  const sum = (type) => Math.round(rows.filter((r) => mine.has(r.pid) && r.cmd.includes(`--type=${type}`)).reduce((t, r) => t + r.rss, 0) / 1024)
+  return { rendererMB: sum('renderer'), gpuMB: sum('gpu-process') }
+}
+
 async function metrics(cdp) {
   await cdp.send('HeapProfiler.collectGarbage')
   const { metrics: m } = await cdp.send('Performance.getMetrics')
   const get = (n) => m.find((x) => x.name === n)?.value ?? 0
-  return { heapMB: +(get('JSHeapUsedSize') / 1048576).toFixed(1), nodes: get('Nodes'), listeners: get('JSEventListeners') }
+  return { heapMB: +(get('JSHeapUsedSize') / 1048576).toFixed(1), nodes: get('Nodes'), listeners: get('JSEventListeners'), ...(await processMB()) }
 }
 
 const gpu = await (async () => {
@@ -92,7 +123,7 @@ const gpu = await (async () => {
 console.log(`GPU in this Chrome: ${gpu}\n`)
 
 if (args.has('memory')) {
-  const { ctx, page, cdp } = await startDrive('full')
+  const { ctx, page, cdp } = await startDrive(DETAIL)
   await cdp.send('Performance.enable')
   const start = await metrics(cdp)
   const samples = [start]
@@ -101,12 +132,12 @@ if (args.has('memory')) {
   while (await page.$('.guide__next')) {
     await new Promise((r) => setTimeout(r, 30000))
     samples.push(await metrics(cdp))
-    if (Date.now() - t0 > 6 * 60_000) break
+    if (Date.now() - t0 > MINUTES * 60_000) break
   }
   const end = await metrics(cdp)
-  console.log(`Memory over a ${Math.round((Date.now() - t0) / 1000)} s simulated drive (after garbage collection):`)
-  samples.concat(end).forEach((s, i) => console.log(`  sample ${String(i).padStart(2)}: heap ${s.heapMB} MB, DOM nodes ${s.nodes}, listeners ${s.listeners}`))
-  console.log(`  growth: heap ${(end.heapMB - start.heapMB).toFixed(1)} MB, nodes ${end.nodes - start.nodes}, listeners ${end.listeners - start.listeners}`)
+  console.log(`Memory over a ${Math.round((Date.now() - t0) / 1000)} s simulated drive on the ${MAP} map, ${DETAIL} detail (after garbage collection):`)
+  samples.concat(end).forEach((s, i) => console.log(`  sample ${String(i).padStart(2)}: heap ${s.heapMB} MB, DOM nodes ${s.nodes}, listeners ${s.listeners}, renderer ${s.rendererMB} MB, GPU ${s.gpuMB} MB`))
+  console.log(`  growth: heap ${(end.heapMB - start.heapMB).toFixed(1)} MB, nodes ${end.nodes - start.nodes}, listeners ${end.listeners - start.listeners}, renderer ${end.rendererMB - start.rendererMB} MB, GPU ${end.gpuMB - start.gpuMB} MB`)
   await ctx.close()
 } else {
   console.log(`Frame rate during a simulated drive (${SECONDS} s each, heading-up 3D camera):`)

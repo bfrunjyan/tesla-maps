@@ -10,7 +10,6 @@ import { chargerToPlace, filterChargers, isFast } from '../lib/chargers'
 import { lerp, lerpAngle, lerpLngLat, type LngLat } from '../lib/geo'
 import { angleDiff } from '../nav/heading'
 import { FALLBACK_CENTER, selectRoute } from '../nav/controller'
-import { sliceRoute } from '../nav/routeTraffic'
 import { stopLetter, stopsOf } from '../nav/stops'
 import { shownRoute } from '../nav/trafficSync'
 import { googleMapId, loadGoogleMaps } from '../services/googleMaps'
@@ -19,6 +18,7 @@ import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { createNavZoom, followZoom } from './camera'
 import { gpuName, isSlowGpu, watchFrameRate } from './performance'
+import { needsRedraw, syncPool, trafficAhead, type AheadState } from './routeAhead'
 import { ROUTE, TRAFFIC } from './style'
 
 const CAR_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
@@ -288,36 +288,47 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     }
   }
 
+  // The route and its traffic are trimmed behind the car only every few metres, and the
+  // same lines are reused, instead of a new set of lines on every GPS fix (see routeAhead.ts).
+  let routeDrawn: AheadState | null = null
   function drawRoute() {
     const nav = useStore.getState().nav
     const route = nav?.status === 'choosing' ? null : nav?.route
     if (!route) {
+      routeDrawn = null
       casing.setMap(null)
       line.setMap(null)
       return
     }
     const p = nav!.progress
+    const next: AheadState = { route, traffic: null, fromM: p?.alongM ?? 0 }
+    if (!needsRedraw(routeDrawn, next)) return
+    routeDrawn = next
     const coords = p ? [p.snapped, ...route.coords.slice(p.segIndex + 1)] : route.coords
     casing.setPath(path(coords))
     line.setPath(path(coords))
-    casing.setMap(map)
-    line.setMap(map)
+    if (casing.getMap() !== map) casing.setMap(map)
+    if (line.getMap() !== map) line.setMap(map)
   }
 
+  let trafficDrawn: AheadState | null = null
   function drawRouteTraffic() {
-    for (const l of trafficLines) l.setMap(null)
-    trafficLines = []
     const s = useStore.getState()
     const route = shownRoute(s.nav)
     const t = s.routeTraffic
-    if (!route || !t || t.route !== route) return
     const fromM = s.nav?.status === 'choosing' ? 0 : (s.nav?.progress?.alongM ?? 0)
-    for (const span of t.spans) {
-      if (span.toM <= fromM) continue
-      const coords = sliceRoute(route, Math.max(span.fromM, fromM), span.toM)
-      if (coords.length < 2) continue
-      trafficLines.push(new Polyline({ map, path: path(coords), strokeColor: LEVEL_COLOUR[span.level], strokeWeight: 8, zIndex: 12, clickable: false }))
-    }
+    const showing = route && t && t.route === route
+    const next: AheadState = { route: showing ? route : null, traffic: showing ? t : null, fromM: showing ? fromM : 0 }
+    if (!needsRedraw(trafficDrawn, next)) return
+    trafficDrawn = next
+    const pieces = showing ? trafficAhead(route, t.spans, fromM) : []
+    trafficLines = syncPool(
+      trafficLines,
+      pieces,
+      (p) => new Polyline({ map, path: path(p.coords), strokeColor: LEVEL_COLOUR[p.level], strokeWeight: 8, zIndex: 12, clickable: false }),
+      (l, p) => l.setOptions({ path: path(p.coords), strokeColor: LEVEL_COLOUR[p.level] }),
+      (l) => l.setMap(null),
+    )
   }
 
   function drawStops() {
