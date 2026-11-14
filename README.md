@@ -286,8 +286,8 @@ and open that URL in the car. First things to check there:
 | Satellite imagery | Esri World Imagery | Production use needs an ArcGIS account |
 | Live traffic | Mapbox Traffic v1 tiles | Needs token; vehicle license per Mapbox terms |
 | Routing + turn instructions | Valhalla public server (FOSSGIS) | No live traffic; fair-use server |
-| Search / reverse geocoding | Photon (komoot) | Fair-use server |
-| Charging / Hungry / Lucky lists | Overpass API (3 mirrors) | Often busy; fair-use |
+| Search, reverse geocoding, Hungry / Lucky lists | Photon (komoot) | Fair-use server |
+| Charging stations | Mapic's server (OpenStreetMap via Overpass, Open Charge Map) | Cached; fair-use |
 
 All of these are public servers meant for light use. Before real users, move to self-hosted
 instances or a licensed provider. Each provider sits behind one module in `src/services/`.

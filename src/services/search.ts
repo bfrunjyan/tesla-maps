@@ -1,17 +1,12 @@
 /**
- * Place search. Prototype providers: Photon (text search, reverse geocoding)
- * and Overpass (category lists). Both are free public servers meant for light
- * use; swap this module for a licensed provider before launch.
+ * Place search. Prototype provider: Photon (text search, reverse geocoding and the
+ * Hungry / Lucky category lists), a free public server meant for light use; swap
+ * this module for a licensed provider before launch.
  */
 import { streetLine } from '../lib/address'
 import type { Place, PlaceCategory } from '../types'
 
 const PHOTON = 'https://photon.komoot.io'
-const OVERPASS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-]
 
 interface PhotonProps {
   osm_type?: string
@@ -63,6 +58,14 @@ export function nearbyBox(near: { lon: number; lat: number }, km = NEARBY_KM): [
   return [near.lon - dLon, near.lat - dLat, near.lon + dLon, near.lat + dLat]
 }
 
+/** Great-circle distance in km. */
+function kmBetween(p: { lon: number; lat: number }, near: { lon: number; lat: number }) {
+  const dLat = ((p.lat - near.lat) * Math.PI) / 180
+  const dLon = ((p.lon - near.lon) * Math.PI) / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((near.lat * Math.PI) / 180) * Math.cos((p.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2
+  return 12742 * Math.asin(Math.sqrt(a))
+}
+
 const placeKey = (p: Place) => `${p.name.toLowerCase()}|${p.address.toLowerCase()}`
 
 function dedupe(list: Place[]) {
@@ -78,25 +81,21 @@ export function mergeResults(local: Place[], global: Place[], near: { lon: numbe
   const nearby = dedupe(local)
   if (nearby.length >= 8) return { nearby, further: [] as Place[] }
   const taken = new Set(nearby.map(placeKey))
-  const nearKm = (p: Place) => {
-    const dLat = ((p.lat - near.lat) * Math.PI) / 180
-    const dLon = ((p.lon - near.lon) * Math.PI) / 180
-    const a = Math.sin(dLat / 2) ** 2 + Math.cos((near.lat * Math.PI) / 180) * Math.cos((p.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2
-    return 12742 * Math.asin(Math.sqrt(a))
-  }
   const further = dedupe(global)
-    .filter((p) => !taken.has(placeKey(p)) && nearKm(p) > NEARBY_KM)
+    .filter((p) => !taken.has(placeKey(p)) && kmBetween(p, near) > NEARBY_KM)
     .slice(0, FURTHER_MAX)
   return { nearby, further }
 }
 
-async function photon(params: Record<string, string>, signal?: AbortSignal): Promise<Place[]> {
+async function photon(params: Record<string, string>, signal?: AbortSignal, opts: { named?: boolean } = {}): Promise<Place[]> {
   const url = new URL(`${PHOTON}/api/`)
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
   const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`Search failed (${res.status})`)
   const data = await res.json()
-  return (data.features ?? []).map(photonToPlace)
+  const features: { properties: PhotonProps; geometry: { coordinates: [number, number] } }[] = data.features ?? []
+  // Lists of places to go to skip nameless ones (a café without a name is just an address).
+  return (opts.named ? features.filter((f) => f.properties?.name) : features).map(photonToPlace)
 }
 
 /** Searches the area around the car and, in parallel, everywhere (for "Further away"). */
@@ -124,49 +123,36 @@ export async function reverseGeocode(lon: number, lat: number, signal?: AbortSig
 
 export type CategoryKind = 'hungry' | 'lucky'
 
-const CATEGORY_QUERY: Record<CategoryKind, string> = {
-  hungry: 'nwr["amenity"~"^(restaurant|fast_food|cafe)$"]["name"]',
-  lucky: 'nwr["tourism"~"^(attraction|viewpoint|museum|artwork)$"]["name"]',
+/** OpenStreetMap categories behind each list (Photon names them osm.<key>.<value>). */
+const CATEGORY_INCLUDE: Record<CategoryKind, string> = {
+  hungry: 'osm.amenity.restaurant,osm.amenity.cafe,osm.amenity.fast_food',
+  lucky: 'osm.tourism.attraction,osm.tourism.museum,osm.tourism.viewpoint,osm.tourism.artwork',
+}
+/** How far each list reaches. */
+export const CATEGORY_RADIUS_KM: Record<CategoryKind, number> = { hungry: 2.5, lucky: 15 }
+/** A list that hasn't come back by then is given up, so the spinner never runs forever. */
+const CATEGORY_TIMEOUT_MS = 8000
+
+/** `signal`, plus giving up after `ms`. */
+function withTimeout(signal: AbortSignal | undefined, ms: number): AbortSignal {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(new Error('Timed out')), ms)
+  signal?.addEventListener('abort', () => ctrl.abort(signal.reason))
+  ctrl.signal.addEventListener('abort', () => clearTimeout(timer))
+  return ctrl.signal
 }
 
+/**
+ * Named places of a kind around the car: places to eat ("I'm hungry") or things to see
+ * ("I'm feeling lucky"). From Photon's category search, which answers in under a second;
+ * the public Overpass servers used before were often down or took longer than a drive.
+ */
 export async function categorySearch(kind: CategoryKind, near: { lon: number; lat: number }, signal?: AbortSignal): Promise<Place[]> {
-  const radius = kind === 'hungry' ? 2500 : 15000
-  const body = `[out:json][timeout:20];${CATEGORY_QUERY[kind]}(around:${radius},${near.lat},${near.lon});out center 60;`
-  let lastError: unknown
-  for (const endpoint of OVERPASS) {
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        body: new URLSearchParams({ data: body }),
-        signal,
-      })
-      if (!res.ok) throw new Error(`Overpass ${res.status}`)
-      const data = await res.json()
-      const places: Place[] = (data.elements ?? [])
-        .map((e: { type: string; id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> }) => {
-          const lat = e.lat ?? e.center?.lat
-          const lon = e.lon ?? e.center?.lon
-          if (lat == null || lon == null) return null
-          const t = e.tags ?? {}
-          const name = t.name || t['name:en'] || t.operator || t.brand || 'Unnamed'
-          const address = [t['addr:street'] && streetLine(t['addr:street'], t['addr:housenumber']), t.operator && t.operator !== name ? t.operator : '', t.cuisine?.replace(/;/g, ', ')]
-            .filter(Boolean)
-            .join(' · ')
-          return {
-            id: `${e.type[0].toUpperCase()}${e.id}`,
-            name,
-            address,
-            lon,
-            lat,
-            category: kind === 'hungry' ? 'food' : 'attraction',
-          } satisfies Place
-        })
-        .filter(Boolean)
-      return places
-    } catch (err) {
-      if (signal?.aborted) throw err
-      lastError = err
-    }
-  }
-  throw lastError ?? new Error('Category search failed')
+  const places = await photon({ include: CATEGORY_INCLUDE[kind], lat: String(near.lat), lon: String(near.lon), limit: '50' }, withTimeout(signal, CATEGORY_TIMEOUT_MS), { named: true })
+  return withinKm(places, near, CATEGORY_RADIUS_KM[kind]).map((p) => ({ ...p, category: kind === 'hungry' ? 'food' : 'attraction' }))
+}
+
+/** Places no further than `km` from `near`. */
+export function withinKm(places: Place[], near: { lon: number; lat: number }, km: number): Place[] {
+  return places.filter((p) => kmBetween(p, near) <= km)
 }

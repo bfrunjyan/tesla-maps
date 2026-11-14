@@ -236,7 +236,12 @@ const categoryCache = new Map<string, Place[]>()
 function TabContent({ tab }: { tab: SearchTab }) {
   const recents = useStore((s) => s.recents)
   const favorites = useStore((s) => s.favorites)
-  const origin = useOrigin()
+  const near = useOrigin()
+  // The lists are for the area, not the exact spot: they reload after about a kilometre
+  // of driving, not every 200 m (which restarted a slow search before it could finish).
+  const lon = Math.round(near.lon * 100) / 100
+  const lat = Math.round(near.lat * 100) / 100
+  const origin = useMemo(() => ({ lon, lat }), [lon, lat])
   const kind: CategoryKind | null = tab === 'hungry' || tab === 'lucky' ? tab : null
   const cacheKey = kind && `${kind}:${origin.lon},${origin.lat}`
   const [state, setState] = useState<{ key: string | null; status: 'loading' | 'done' | 'error'; places: Place[] }>({ key: null, status: 'done', places: [] })
@@ -246,7 +251,8 @@ function TabContent({ tab }: { tab: SearchTab }) {
     const cached = categoryCache.get(cacheKey)
     if (cached) return setState({ key: cacheKey, status: 'done', places: cached })
     const ctrl = new AbortController()
-    setState({ key: cacheKey, status: 'loading', places: [] })
+    // A refresh for a new area keeps showing the last list until the new one arrives.
+    setState((prev) => ({ key: cacheKey, status: 'loading', places: prev.key?.startsWith(`${kind}:`) ? prev.places : [] }))
     categorySearch(kind, origin, ctrl.signal)
       .then((places) => {
         let list = places
@@ -266,7 +272,8 @@ function TabContent({ tab }: { tab: SearchTab }) {
   if (tab === 'charging') return <ChargingTab />
   if (state.status === 'error') return <p className="empty">Couldn’t load places right now. Try again in a moment.</p>
   if (state.status === 'done' && state.key === cacheKey && !state.places.length) return <p className="empty">{EMPTY[tab]}</p>
-  return <PlaceList places={state.key === cacheKey ? state.places : []} loading={state.status === 'loading' || state.key !== cacheKey} />
+  const showing = state.key === cacheKey ? state.places : []
+  return <PlaceList places={showing} loading={(state.status === 'loading' || state.key !== cacheKey) && !showing.length} />
 }
 
 /** Nearest charging stations, with the same All / Fast filter as the map. */
