@@ -1,16 +1,51 @@
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { arrivalPct, batteryLevel, clampPct, whToPct } from '../nav/battery'
-import { LATEST_YEAR, MODELS, findModel, trimsFor, vehicleSpec, yearsFor } from './catalog'
+import { LATEST_YEAR, MODELS, findModel, latestPhoto, photoFor, trimsFor, vehicleSpec, yearsFor } from './catalog'
 
 describe('car catalog', () => {
-  it('has a photo file and a credit for every model', () => {
+  it('has a photo file and a credit for every generation', () => {
     for (const m of MODELS) {
-      expect(existsSync(`public${m.image}`), m.image).toBe(true)
-      expect(m.credit.author).toBeTruthy()
-      expect(m.credit.license).toMatch(/^(CC BY-SA 4\.0|CC0)$/)
-      expect(m.credit.url).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/)
+      for (const p of m.photos) {
+        expect(existsSync(`public${p.image}`), p.image).toBe(true)
+        expect(p.credit.author).toBeTruthy()
+        expect(p.credit.license).toMatch(/^(CC BY-SA 4\.0|CC BY 2\.0|CC0)$/)
+        expect(p.credit.url).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/)
+      }
     }
+  })
+
+  it('has exactly one photo for every year of every model', () => {
+    for (const m of MODELS) {
+      for (const y of yearsFor(m)) {
+        const matching = m.photos.filter((p) => y >= (p.from ?? m.from) && y <= (p.to ?? m.to ?? LATEST_YEAR))
+        expect(matching.length, `${m.name} ${y}`).toBe(1)
+      }
+    }
+  })
+
+  it('shows the refreshed design from its first model year', () => {
+    const photo = (model: string, year: number) => photoFor(findModel(model)!, year).image
+    expect(photo('model3', 2023)).toBe('/cars/model3-2017.jpg')
+    expect(photo('model3', 2024)).toBe('/cars/model3-2024.jpg')
+    expect(photo('modely', 2024)).toBe('/cars/modely-2020.jpg')
+    expect(photo('modely', 2025)).toBe('/cars/modely-2025.jpg')
+    expect(photo('models', 2015)).toBe('/cars/models-2012.jpg')
+    expect(photo('models', 2016)).toBe('/cars/models-2016.jpg')
+    expect(photo('models', 2020)).toBe('/cars/models-2016.jpg')
+    expect(photo('models', 2021)).toBe('/cars/models-2021.jpg')
+    expect(photo('modelx', 2020)).toBe('/cars/modelx-2015.jpg')
+    expect(photo('modelx', 2021)).toBe('/cars/modelx-2021.jpg')
+    expect(photo('cybertruck', 2025)).toBe('/cars/cybertruck.jpg')
+  })
+
+  it('gives a saved car the photo of its year', () => {
+    expect(vehicleSpec({ model: 'modely', year: 2025, trim: 'lr' })?.photo.image).toBe('/cars/modely-2025.jpg')
+    expect(vehicleSpec({ model: 'modely', year: 2022, trim: 'lr' })?.photo.image).toBe('/cars/modely-2020.jpg')
+  })
+
+  it('shows the newest design in the model list', () => {
+    expect(latestPhoto(findModel('model3')!).image).toBe('/cars/model3-2024.jpg')
   })
 
   it('offers at least one version for every year of every model', () => {

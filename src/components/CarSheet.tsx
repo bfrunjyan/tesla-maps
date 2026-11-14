@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowsClockwise, CaretLeft, Minus, Plus, X } from '@phosphor-icons/react'
 import { useStore } from '../state/store'
 import type { TeslaCar } from '../types'
-import { MODELS, findModel, trimsFor, vehicleSpec, yearsFor, type CarModel } from '../vehicle/catalog'
+import { MODELS, findModel, latestPhoto, photoFor, trimsFor, vehicleSpec, yearsFor, type CarModel } from '../vehicle/catalog'
 import { ago, readingLine } from '../vehicle/liveBattery'
 import { chooseTeslaCar, connectTesla, disconnectTesla, readTesla } from '../vehicle/tesla'
 import { BatteryIcon } from './BatteryIcon'
@@ -64,7 +64,7 @@ function CarSummary({ onChange }: { onChange: () => void }) {
   return (
     <div className="car">
       <div className="car__hero">
-        <img className="car__photo" src={spec.model.image} width={640} height={400} alt={`Tesla ${spec.model.name}`} />
+        <img className="car__photo" src={spec.photo.image} width={640} height={400} alt={`Tesla ${spec.model.name}, ${spec.photo.label.toLowerCase()}`} />
         <div className="car__id">
           <span className="car__name">{spec.title}</span>
           <span className="car__trim">{spec.trim.name} · ≈{spec.capacityKWh} kWh battery</span>
@@ -237,7 +237,7 @@ function CarPicker({ onDone, canCancel, start }: { onDone: () => void; canCancel
             {MODELS.map((m) => (
               <li key={m.id}>
                 <button className="model" onClick={() => setStep({ name: 'year', model: m })}>
-                  <img className="model__photo" src={m.image} width={640} height={400} alt="" loading="lazy" />
+                  <img className="model__photo" src={latestPhoto(m).image} width={640} height={400} alt="" loading="lazy" />
                   <span className="model__name">{m.name}</span>
                 </button>
               </li>
@@ -246,15 +246,17 @@ function CarPicker({ onDone, canCancel, start }: { onDone: () => void; canCancel
           <details className="credits">
             <summary>Photo credits</summary>
             <ul>
-              {MODELS.map((m) => (
-                <li key={m.id}>
-                  {m.name}:{' '}
-                  <a href={m.credit.url} target="_blank" rel="noreferrer">
-                    {m.credit.author}
-                  </a>
-                  , {m.credit.license}, cropped (Wikimedia Commons)
-                </li>
-              ))}
+              {MODELS.flatMap((m) =>
+                m.photos.map((ph) => (
+                  <li key={ph.image}>
+                    {m.photos.length > 1 ? `${m.name} (${ph.label.toLowerCase()})` : m.name}:{' '}
+                    <a href={ph.credit.url} target="_blank" rel="noreferrer">
+                      {ph.credit.author}
+                    </a>
+                    , {ph.credit.license}, cropped (Wikimedia Commons)
+                  </li>
+                )),
+              )}
             </ul>
           </details>
         </>
@@ -263,13 +265,31 @@ function CarPicker({ onDone, canCancel, start }: { onDone: () => void; canCancel
       {step.name === 'year' && (
         <>
           <p className="picker__q">Which year is your {step.model.name}?</p>
-          <ul className="years">
-            {yearsFor(step.model).map((y) => (
-              <li key={y}>
-                <button className="year" onClick={() => setStep({ name: 'trim', model: step.model, year: y })}>{y}</button>
-              </li>
-            ))}
-          </ul>
+          {/* Years grouped by generation, newest first, each with its photo. */}
+          {[...step.model.photos].reverse().map((ph) => {
+            const years = yearsFor(step.model).filter((y) => photoFor(step.model, y) === ph)
+            if (!years.length) return null
+            const span = years.length > 1 ? `${years[years.length - 1]}–${years[0]}` : `${years[0]}`
+            return (
+              <section className="generation" key={ph.image} aria-label={`${ph.label}, ${span}`}>
+                <img className="generation__photo" src={ph.image} width={640} height={400} alt="" loading="lazy" />
+                <div className="generation__body">
+                  {step.model.photos.length > 1 && (
+                    <p className="generation__label">
+                      {ph.label} <span className="generation__span">{span}</span>
+                    </p>
+                  )}
+                  <ul className="years">
+                    {years.map((y) => (
+                      <li key={y}>
+                        <button className="year" onClick={() => setStep({ name: 'trim', model: step.model, year: y })}>{y}</button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )
+          })}
         </>
       )}
 

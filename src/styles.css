@@ -1007,6 +1007,12 @@ h2, p { margin: 0; }
 .model__photo { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
 .model__name { padding: 12px 14px; font-size: 16px; font-weight: 700; }
 .years { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.generation { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 14px; align-items: start; }
+.generation + .generation { padding-top: 14px; border-top: 1px solid var(--divider); }
+.generation__photo { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--radius-sm); display: block; }
+.generation__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.generation__label { margin: 0; font-size: 14px; font-weight: 600; }
+.generation__span { margin-left: 4px; color: var(--text-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 .year {
   width: 100%;
   min-height: 52px;
@@ -1041,6 +1047,7 @@ h2, p { margin: 0; }
 @media (max-width: 640px) {
   .models { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .car__hero { grid-template-columns: 1fr; }
+  .generation { grid-template-columns: 112px minmax(0, 1fr); gap: 10px; }
   .tesla { grid-template-columns: 1fr; }
   .tesla__actions .btn { width: 100%; }
   .charger-filter { min-width: 0; }
