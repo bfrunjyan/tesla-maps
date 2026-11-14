@@ -13,6 +13,7 @@ import { googleMapId, usingGoogle } from './services/googleMaps'
 import { initLocation, resumeTrip, toggleSimulation } from './nav/controller'
 import { rememberTrips, resumeIfInterrupted } from './nav/resume'
 import { startAutoRecenter } from './nav/autoRecenter'
+import { tapOutsideSearch, watchTaps } from './lib/tapOutside'
 import { startInbox } from './nav/inbox'
 import { startSpeedLimits } from './nav/speedSync'
 import { startRouteTraffic } from './nav/trafficSync'
@@ -52,7 +53,6 @@ function MapApp() {
   const panelOpen = useStore((s) => s.panelOpen)
   const selectedPlace = useStore((s) => s.selectedPlace)
   const areaLabel = useStore((s) => s.areaLabel)
-  const closePanel = useStore((s) => s.closePanel)
   const accountOpen = useStore((s) => s.accountOpen)
   const historyOpen = useStore((s) => s.historyOpen)
   const inbox = useStore((s) => !!s.inbox)
@@ -75,6 +75,7 @@ function MapApp() {
     startSpeedLimits()
     startInbox()
     startAutoRecenter()
+    watchTaps()
   }, [])
 
   return (
@@ -86,7 +87,7 @@ function MapApp() {
       ) : (
         <MapView />
       )}
-      <div className="scrim" data-visible={panelOpen} onClick={closePanel} aria-hidden />
+      <div className="scrim" data-visible={panelOpen} onClick={() => tapOutsideSearch()} aria-hidden />
       <div className="left-column">
         {nav && !addingStop ? <GuidanceCard /> : <SearchBox />}
         {nav && !addingStop && <ArrivalCard />}

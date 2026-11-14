@@ -15,6 +15,7 @@ import { shownRoute } from '../nav/trafficSync'
 import { loadGoogleChargers, shownChargers } from '../services/googleChargers'
 import { googleMapId, loadGoogleMaps } from '../services/googleMaps'
 import { reverseGeocode } from '../services/search'
+import { tapOutsideSearch } from '../lib/tapOutside'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { createNavZoom, followZoom } from './camera'
@@ -420,7 +421,7 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     // One of Google's place icons: keep Google's own info window closed, and open the place in Mapic.
     const placeId = (e as google.maps.IconMouseEvent).placeId
     if (placeId) e.stop()
-    if (s.panelOpen) return s.closePanel()
+    if (s.panelOpen) return tapOutsideSearch()
     if (placeId && e.latLng && s.showPois) return void openGooglePlace(placeId, e.latLng.lng(), e.latLng.lat())
     if (s.selectedPlace) return s.set({ selectedPlace: null })
     s.set({ toolsVisible: !s.toolsVisible })

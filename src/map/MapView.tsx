@@ -9,6 +9,7 @@ import { chargerToPlace, filterChargers, isFast } from '../lib/chargers'
 import { angleDiff } from '../nav/heading'
 import { FALLBACK_CENTER, selectRoute } from '../nav/controller'
 import { reverseGeocode } from '../services/search'
+import { tapOutsideSearch } from '../lib/tapOutside'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { applyLook, buildStyle, CHARGER_PIN, ROUTE, setTrafficVisible, TRAFFIC, trafficTileUrl } from './style'
@@ -455,7 +456,7 @@ export function MapView() {
         return
       }
       const s = useStore.getState()
-      if (s.panelOpen) return s.closePanel()
+      if (s.panelOpen) return tapOutsideSearch()
       // Charger pins: a generous hit area, since they're tapped from the driver's seat.
       if (s.showChargers && map.getLayer('chargers')) {
         const hit = map.queryRenderedFeatures([[e.point.x - 18, e.point.y - 6], [e.point.x + 18, e.point.y + 44]], { layers: ['chargers'] })[0]
