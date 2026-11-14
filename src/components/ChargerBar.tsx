@@ -1,11 +1,12 @@
 import { Lightning } from '@phosphor-icons/react'
 import { filterChargers } from '../lib/chargers'
+import { useShownChargers } from '../services/googleChargers'
 import { useStore } from '../state/store'
 
 /** All / Fast switch. One bolt = every station, three bolts = fast (50 kW+), like the car's charger filter. */
 export function ChargerFilterControl({ counts = false }: { counts?: boolean }) {
   const filter = useStore((s) => s.chargerFilter)
-  const chargers = useStore((s) => s.chargers)
+  const chargers = useShownChargers()
   const set = useStore((s) => s.set)
   const fastCount = counts ? filterChargers(chargers, 'fast').length : 0
   return (

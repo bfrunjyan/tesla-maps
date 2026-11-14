@@ -6,6 +6,8 @@ import { chargerToPlace, isFast, nearestChargers } from '../lib/chargers'
 import { distance, formatDistance } from '../lib/geo'
 import { useLongPress } from '../lib/useLongPress'
 import { addStop, FALLBACK_CENTER, startNavigation } from '../nav/controller'
+import { loadGoogleChargers, useShownChargers } from '../services/googleChargers'
+import { usingGoogle } from '../services/googleMaps'
 import { categorySearch, searchPlaces, type CategoryKind } from '../services/search'
 import { useStore, type SearchTab } from '../state/store'
 import type { Place } from '../types'
@@ -278,14 +280,19 @@ function TabContent({ tab }: { tab: SearchTab }) {
 
 /** Nearest charging stations, with the same All / Fast filter as the map. */
 function ChargingTab() {
-  const chargers = useStore((s) => s.chargers)
+  const chargers = useShownChargers()
   const state = useStore((s) => s.chargersState)
   const filter = useStore((s) => s.chargerFilter)
+  const google = useStore((s) => usingGoogle(s))
   const origin = useOrigin()
 
   useEffect(() => {
     useStore.getState().loadChargers()
   }, [])
+  // On the Google map the list includes Google's stations around the car too.
+  useEffect(() => {
+    if (google) void loadGoogleChargers([origin.lon, origin.lat], 15_000)
+  }, [google, origin])
 
   const places = useMemo(() => nearestChargers(chargers, origin, filter).map((n) => chargerToPlace(n.charger)), [chargers, origin, filter])
 

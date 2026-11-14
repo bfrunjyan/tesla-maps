@@ -7,11 +7,12 @@
  */
 import { useEffect, useRef } from 'react'
 import { chargerToPlace, filterChargers, isFast } from '../lib/chargers'
-import { lerp, lerpAngle, lerpLngLat, type LngLat } from '../lib/geo'
+import { distance, lerp, lerpAngle, lerpLngLat, type LngLat } from '../lib/geo'
 import { angleDiff } from '../nav/heading'
 import { FALLBACK_CENTER, selectRoute } from '../nav/controller'
 import { stopLetter, stopsOf } from '../nav/stops'
 import { shownRoute } from '../nav/trafficSync'
+import { loadGoogleChargers, shownChargers } from '../services/googleChargers'
 import { googleMapId, loadGoogleMaps } from '../services/googleMaps'
 import { reverseGeocode } from '../services/search'
 import { isLite, useStore } from '../state/store'
@@ -150,7 +151,7 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     chargerMarkers = []
     const s = useStore.getState()
     if (!s.showChargers) return
-    chargerMarkers = filterChargers(s.chargers, s.chargerFilter).map((c) => {
+    chargerMarkers = filterChargers(shownChargers(s), s.chargerFilter).map((c) => {
       const fast = isFast(c)
       const content = el(chargerPinSvg(fast), 'gcharger')
       if (c.maxKw != null) {
@@ -425,6 +426,20 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     s.set({ toolsVisible: !s.toolsVisible })
   })
   on('zoom_changed', applyChargerZoom)
+  // Google's stations for the area on screen, once the map comes to rest (see googleChargers.ts).
+  let chargerTimer: number | undefined
+  function loadChargersInView() {
+    window.clearTimeout(chargerTimer)
+    chargerTimer = window.setTimeout(() => {
+      const b = map.getBounds()
+      const c = map.getCenter()
+      if (!b || !c || !useStore.getState().showChargers) return
+      const ne = b.getNorthEast()
+      const radius = distance([c.lng(), c.lat()], [ne.lng(), ne.lat()])
+      void loadGoogleChargers([c.lng(), c.lat()], radius)
+    }, 700)
+  }
+  listeners.push(map.addListener('idle', loadChargersInView))
 
   // Measured fallback: switch to lite if the map keeps drawing slowly while it follows the car.
   let stopFpsWatch: (() => void) | null = null
@@ -457,7 +472,8 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     if (s.showTraffic !== prev.showTraffic || s.trafficAllRoads !== prev.trafficAllRoads || !s.nav !== !prev.nav) applyTraffic()
     if (s.satellite !== prev.satellite) map.setMapTypeId(s.satellite ? 'hybrid' : 'roadmap')
     if (s.showPois !== prev.showPois) map.setOptions({ clickableIcons: s.showPois })
-    if (s.showChargers !== prev.showChargers || s.chargers !== prev.chargers || s.chargerFilter !== prev.chargerFilter) drawChargers()
+    if (s.showChargers !== prev.showChargers || s.chargers !== prev.chargers || s.googleChargers !== prev.googleChargers || s.chargerFilter !== prev.chargerFilter) drawChargers()
+    if (s.showChargers && !prev.showChargers) loadChargersInView()
     if (s.nav?.options !== prev.nav?.options || s.nav?.selected !== prev.nav?.selected || s.nav?.status !== prev.nav?.status) drawOptions(s.nav?.options !== prev.nav?.options)
     if (s.nav?.route !== prev.nav?.route || s.nav?.progress !== prev.nav?.progress || s.nav?.status !== prev.nav?.status) drawRoute()
     if (s.nav !== prev.nav) updateLanes(guiding(s.nav) ? s.nav!.route : null, s.nav?.progress)
@@ -496,6 +512,7 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     cancelAnimationFrame(anim)
     cancelAnimationFrame(headingFrame)
     window.clearTimeout(pressTimer)
+    window.clearTimeout(chargerTimer)
     for (const l of listeners) l.remove()
     for (const l of [...optionLines, ...trafficLines, casing, line]) l.setMap(null)
     for (const m of [...stopMarkers, ...chargerMarkers]) m.map = null

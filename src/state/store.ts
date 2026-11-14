@@ -53,6 +53,8 @@ interface State {
   showPois: boolean
   showChargers: boolean
   chargers: Charger[]
+  /** Google's stations near where the Google map has been (shown only on the Google map). */
+  googleChargers: Charger[]
   chargersState: 'idle' | 'loading' | 'ready' | 'error'
   chargerFilter: ChargerFilter
 
@@ -172,6 +174,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   showPois: load('showPois', false),
   showChargers: false,
   chargers: [],
+  googleChargers: [],
   chargersState: 'idle',
   chargerFilter: load<ChargerFilter>('chargerFilter', 'all'),
 

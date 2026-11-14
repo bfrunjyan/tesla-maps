@@ -27,7 +27,7 @@ export interface Charger {
   dc: boolean | null
   connectors: string[]
   points: number | null
-  source: 'osm' | 'ocm'
+  source: 'osm' | 'ocm' | 'google'
   /** Live availability; null until a charging network shares it. */
   status: { state: 'free' | 'busy' | 'offline'; free?: number; total?: number; at: string } | null
 }

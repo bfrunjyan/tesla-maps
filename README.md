@@ -71,6 +71,15 @@ the map and in the Charging tab.
 - **OpenStreetMap** (always on): about 85 stations in Armenia, few with power listed.
 - **Open Charge Map** (optional): set `OCM_API_KEY` (free at openchargemap.org) to add power
   and connector data. Entries within 60 m of each other are merged.
+- **Google** (with the Google map only): Google lists many more stations (Team Energy,
+  EcoCars, Amperion, EVAN, E-Volt, iCHARGE…) but gives the power for few of them, so the Fast
+  filter rarely gains from it (`src/services/googleChargers.ts`). Loaded from the Places API
+  for the area on screen once the map comes to rest, at most 20 stations per area, an area
+  asked for only once per session; each request is billed (Nearby Search Enterprise +
+  Atmosphere: $40 per 1,000 after 1,000 free a month). Google's terms allow its place data
+  only on a Google map, so these stations never appear with the standard map. Where Google
+  and OpenStreetMap list the same station (within 60 m), it shows once, keeping the entry
+  that knows the power.
 - **Live status** (free / busy / offline): no Armenian network publishes it. Each charger has
   a `status` field that stays empty until a network shares data (e.g. via OCPI).
 
