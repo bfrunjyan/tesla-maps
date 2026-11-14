@@ -2,13 +2,14 @@ import { useEffect, type ReactNode } from 'react'
 import { Car, Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal, UserCircle } from '@phosphor-icons/react'
 import { cardinal } from '../lib/geo'
 import { trafficTileUrl } from '../map/style'
+import { usingGoogle } from '../services/googleMaps'
 import { isLite, useStore } from '../state/store'
 import { BatteryIcon } from './BatteryIcon'
 import { GpsIndicator } from './Location'
 import { SettingsPopover } from './SettingsPopover'
 
 const HIDE_AFTER_MS = 6000
-const HAS_TRAFFIC = !!trafficTileUrl()
+const MAPBOX_TRAFFIC = !!trafficTileUrl()
 
 function Tool({ label, active, onClick, children }: { label: string; active?: boolean; onClick: () => void; children: ReactNode }) {
   return (
@@ -36,6 +37,9 @@ export function MapControls() {
   const vehicle = useStore((s) => s.vehicle)
   const battery = useStore((s) => s.battery)
   const charging = useStore((s) => s.battery?.source === 'tesla' && s.tesla.reading?.charging === 'charging')
+  const google = useStore((s) => usingGoogle(s))
+  // The Google map has its own traffic; the standard map needs the Mapbox token.
+  const HAS_TRAFFIC = google || MAPBOX_TRAFFIC
   const s = useStore.getState()
 
   // Tools hide themselves after a few seconds without interaction, like in the car.

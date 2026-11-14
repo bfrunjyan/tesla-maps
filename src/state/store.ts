@@ -14,6 +14,8 @@ export type Lang = 'en-US' | 'ru-RU'
 export type ThemeSetting = 'auto' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
 export type MapDetail = 'auto' | 'full' | 'lite'
+/** 'google': the Google map with Google routing and traffic (a test, needs VITE_GOOGLE_MAPS_KEY). */
+export type MapProvider = 'standard' | 'google'
 /** GPS health as the driver should see it. 'ok' shows nothing. */
 export type GpsStatus = 'idle' | 'needs-permission' | 'finding' | 'ok' | 'weak' | 'lost' | 'denied' | 'unavailable'
 
@@ -75,6 +77,7 @@ interface State {
   /** Map detail setting; 'auto' uses autoLite, detected per car. */
   mapDetail: MapDetail
   autoLite: boolean
+  mapProvider: MapProvider
   theme: Theme
   settingsOpen: boolean
 
@@ -185,6 +188,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   themeSetting: load<ThemeSetting>('themeSetting', 'auto'),
   mapDetail: load<MapDetail>('mapDetail', 'auto'),
   autoLite: load('autoLite', false),
+  mapProvider: load<MapProvider>('mapProvider', 'standard'),
   theme: 'dark',
   settingsOpen: false,
 
@@ -216,7 +220,7 @@ export const useStore = create<State & Actions>((set, get) => ({
 
   set: (patch) => {
     set(patch)
-    for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting', 'mapDetail', 'autoLite', 'chargerFilter'] as const) {
+    for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting', 'mapDetail', 'autoLite', 'chargerFilter', 'mapProvider'] as const) {
       if (key in patch) save(key, patch[key])
     }
   },

@@ -6,6 +6,8 @@ import { decodePolyline6, distance, type LngLat } from '../lib/geo'
 import { climbStats, estimateKWh } from '../nav/energy'
 import { buildOptions, type RouteOption } from '../nav/routeOptions'
 import type { Maneuver, Route, RouteStop } from '../types'
+import { usingGoogle } from './googleMaps'
+import { googleRoutes } from './googleRoutes'
 
 const VALHALLA = 'https://valhalla1.openstreetmap.de/route'
 
@@ -112,6 +114,7 @@ const shortestOptions = { costing_options: { auto: { shortest: true } } }
 
 /** One route through the stops in order (used for rerouting): keeps the driver's fastest/shortest choice. */
 export async function fetchRoute(from: From, to: RouteTarget[], lang: string, signal?: AbortSignal, preference: RoutePreference = 'fastest'): Promise<Route> {
+  if (usingGoogle()) return (await googleRoutes(from, to, lang, signal))[0]
   const data = await valhalla(from, to, lang, preference === 'shortest' ? shortestOptions : {}, signal)
   return tripToRoute(data.trip, lang, preference, to)
 }
@@ -141,6 +144,11 @@ async function addEnergy(route: Route, signal?: AbortSignal): Promise<Route> {
  * Through several stops the server offers no alternatives, so it is fastest and shortest.
  */
 export async function fetchRouteOptions(from: From, to: RouteTarget[], lang: string, signal?: AbortSignal): Promise<RouteOption[]> {
+  if (usingGoogle()) {
+    // Google: up to three traffic-aware choices (one when there are stops on the way).
+    const routes = await googleRoutes(from, to, lang, signal, true)
+    return buildOptions(await Promise.all(routes.map((r) => addEnergy(r, signal).catch(() => r))))
+  }
   const [fast, short] = await Promise.allSettled([
     valhalla(from, to, lang, to.length === 1 ? { alternates: 2 } : {}, signal),
     valhalla(from, to, lang, shortestOptions, signal),

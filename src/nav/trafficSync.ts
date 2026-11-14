@@ -22,6 +22,14 @@ let loadedAt = 0
 
 async function load(route: Route) {
   abort?.abort()
+  // Google gives the traffic with the route itself.
+  if (route.traffic) {
+    loadedFor = route
+    loadedAt = Date.now()
+    useStore.getState().set({ routeTraffic: { route, spans: route.traffic } })
+    return
+  }
+  if (!hasTraffic()) return
   const mine = (abort = new AbortController())
   loadedFor = route
   loadedAt = Date.now()
@@ -47,14 +55,14 @@ function sync() {
   if (route !== loadedFor) {
     if (s.routeTraffic && s.routeTraffic.route !== route) s.set({ routeTraffic: null })
     load(route)
-  } else if (Date.now() - loadedAt >= REFRESH_MS && document.visibilityState === 'visible') {
+  } else if (!route.traffic && Date.now() - loadedAt >= REFRESH_MS && document.visibilityState === 'visible') {
     load(route)
   }
 }
 
 let started = false
 export function startRouteTraffic() {
-  if (started || !hasTraffic()) return
+  if (started) return
   started = true
   useStore.subscribe((s, prev) => {
     if (s.nav !== prev.nav && shownRoute(s.nav) !== shownRoute(prev.nav)) sync()

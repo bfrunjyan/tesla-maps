@@ -1,4 +1,5 @@
 import type { LngLat } from './lib/geo'
+import type { TrafficSpan } from './nav/routeTraffic'
 
 export type PlaceCategory = 'address' | 'charging' | 'food' | 'attraction' | 'poi' | 'home' | 'work' | 'pin'
 
@@ -125,6 +126,10 @@ export interface Route {
    * where each one is along the route, and the maneuver that arrives at it.
    */
   stops?: RouteStop[]
+  /** Traffic along the route as the routing service gave it (Google); otherwise read from traffic tiles. */
+  traffic?: TrafficSpan[]
+  /** Which service planned it. */
+  source?: 'google'
 }
 
 export interface RouteStop {

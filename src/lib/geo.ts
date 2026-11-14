@@ -83,7 +83,9 @@ export function formatClock(date: Date): string {
 }
 
 /** Decode a Valhalla polyline6 string into [lon, lat] pairs. */
-export function decodePolyline6(str: string): LngLat[] {
+/** Decodes an encoded polyline: 6 decimals (the routing server) or 5 (Google). */
+export function decodePolyline(str: string, precision = 6): LngLat[] {
+  const factor = 10 ** precision
   const coords: LngLat[] = []
   let index = 0, lat = 0, lon = 0
   while (index < str.length) {
@@ -98,7 +100,9 @@ export function decodePolyline6(str: string): LngLat[] {
       if (which === 0) lat += delta
       else lon += delta
     }
-    coords.push([lon / 1e6, lat / 1e6])
+    coords.push([lon / factor, lat / factor])
   }
   return coords
 }
+
+export const decodePolyline6 = (str: string) => decodePolyline(str, 6)

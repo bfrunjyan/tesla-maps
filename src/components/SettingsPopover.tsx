@@ -1,6 +1,7 @@
 import { CircleHalf, Moon, Sun } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
-import { isLite, useStore, type Lang, type MapDetail, type ThemeSetting } from '../state/store'
+import { googleKey } from '../services/googleMaps'
+import { isLite, useStore, type Lang, type MapDetail, type MapProvider, type ThemeSetting } from '../state/store'
 
 function Segmented<T extends string>({ label, value, options, onChange }: {
   label: string
@@ -30,6 +31,7 @@ export function SettingsPopover() {
   const lang = useStore((s) => s.lang)
   const mapDetail = useStore((s) => s.mapDetail)
   const lite = useStore(isLite)
+  const provider = useStore((s) => s.mapProvider)
   const s = useStore.getState()
 
   return (
@@ -63,6 +65,22 @@ export function SettingsPopover() {
         <p className="setting__hint">
           {lite ? 'Lite on this car, for smoother driving: flat buildings, lighter graphics.' : 'Full detail. Switches to lite if this car draws the map slowly.'}
         </p>
+      )}
+      {googleKey() && (
+        <>
+          <Segmented<MapProvider>
+            label="Map"
+            value={provider}
+            onChange={(v) => s.set({ mapProvider: v })}
+            options={[
+              { value: 'standard', label: 'Standard' },
+              { value: 'google', label: 'Google (test)' },
+            ]}
+          />
+          {provider === 'google' && (
+            <p className="setting__hint">Google’s map, routes and traffic. Routes planned from now on use Google. Charger pins aren’t on this map yet.</p>
+          )}
+        </>
       )}
       <Segmented<Lang>
         label="Voice"

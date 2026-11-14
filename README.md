@@ -192,7 +192,7 @@ sign-in is one tap on a phone that's still signed in. API code lives in `server/
 2. On the app service, set Variables:
    - `DATABASE_URL` → reference the Postgres service's `DATABASE_URL`
    - `APP_URL` → the app's public `https://…` domain (Settings → Networking → Generate domain)
-   - optional: `RESEND_API_KEY`, `EMAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `VITE_MAPBOX_TOKEN`
+   - optional: `RESEND_API_KEY`, `EMAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `VITE_MAPBOX_TOKEN`, `VITE_GOOGLE_MAPS_KEY`
 3. Railway runs `npm install`, `npm run build`, `npm start`. `npm start` runs the API and
    serves the built app from one process; migrations apply automatically on start.
 
@@ -222,6 +222,20 @@ so a jam on the opposite carriageway doesn't colour the driver's side. Stretches
 traffic data keep the route's blue. It refreshes every 3 minutes. While a route is shown,
 traffic on other roads is hidden; the traffic button brings it back for that trip. The
 colours are only as good as the traffic provider's data.
+
+### Google map (test)
+
+With `VITE_GOOGLE_MAPS_KEY` set (Maps JavaScript API and Routes API enabled on it),
+Settings → Map offers **Google (test)**. It swaps the map for Google's
+(`src/map/GoogleMapView.tsx`) and plans routes with Google's Routes API
+(`src/services/googleRoutes.ts`): routes that take live traffic into account, with
+Google's traffic level for each stretch (normal, slow, jam) drawn on the route, and Google's
+traffic layer for other roads. Google's terms allow its routes and traffic only on a Google
+map, so the two are switched together. Search stays on Photon. Not on the Google map yet:
+charger pins, the places toggle, 3D on/off and the lite map. Google bills each map load and
+each route request (traffic along the route is a higher-priced request), and a reroute is a
+new request. If the map can't load or Google refuses the key, Mapic goes back to the
+standard map and says so.
 
 ### Appearance
 

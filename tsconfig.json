@@ -11,7 +11,7 @@
     "isolatedModules": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": ["vite/client", "geojson"]
+    "types": ["vite/client", "geojson", "google.maps"]
   },
   "include": ["src"]
 }
