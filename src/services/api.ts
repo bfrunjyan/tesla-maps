@@ -77,6 +77,12 @@ export const api = {
   saveDrives: (logId: string, days: { day: string; metres: number; wh: number; seconds: number }[]) =>
     request<{ ok: true }>('PUT', '/drives', { logId, days }),
 
+  /** "Send to car": the place goes to the account's inbox; `device` is this device's id. */
+  sendToCar: (place: Place, device: string) => request<{ ok: true }>('POST', '/inbox', { place, device }),
+  /** The place waiting for this device from another one, if any. */
+  inbox: (device: string) => request<{ place: Place | null; sentAt?: string }>('GET', `/inbox?device=${encodeURIComponent(device)}`),
+  inboxSeen: (sentAt: string) => request<{ ok: true }>('POST', '/inbox/seen', { sentAt }),
+
   teslaStatus: () => request<TeslaLink>('GET', '/tesla/status'),
   /** Asks the car for its battery now (the server spaces these out; Tesla bills each one). */
   teslaRead: () => request<TeslaLink & { note: TeslaNote }>('POST', '/tesla/read', {}),

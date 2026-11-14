@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { ArrivalCard } from './components/ArrivalCard'
 import { ChargerBar } from './components/ChargerBar'
 import { CommuteCard } from './components/CommuteCard'
+import { InboxCard } from './components/InboxCard'
 import { GuidanceCard } from './components/GuidanceCard'
 import { LocationSheet } from './components/Location'
 import { SpeedSign } from './components/SpeedSign'
@@ -12,6 +13,7 @@ import { MapView } from './map/MapView'
 import { googleMapId, usingGoogle } from './services/googleMaps'
 import { initLocation, resumeTrip, toggleSimulation } from './nav/controller'
 import { rememberTrips, resumeIfInterrupted } from './nav/resume'
+import { startInbox } from './nav/inbox'
 import { startSpeedLimits } from './nav/speedSync'
 import { startRouteTraffic } from './nav/trafficSync'
 import { initSession } from './state/session'
@@ -53,6 +55,7 @@ function MapApp() {
   const closePanel = useStore((s) => s.closePanel)
   const accountOpen = useStore((s) => s.accountOpen)
   const historyOpen = useStore((s) => s.historyOpen)
+  const inbox = useStore((s) => !!s.inbox)
   const carSheetOpen = useStore((s) => s.carSheetOpen)
   const chargerBar = useStore((s) => s.showChargers && !s.nav)
   const google = useStore((s) => usingGoogle(s))
@@ -70,6 +73,7 @@ function MapApp() {
     rememberTrips()
     resumeIfInterrupted(resumeTrip)
     startSpeedLimits()
+    startInbox()
   }, [])
 
   return (
@@ -86,7 +90,8 @@ function MapApp() {
         {nav && !addingStop ? <GuidanceCard /> : <SearchBox />}
         {nav && !addingStop && <ArrivalCard />}
         {!nav && !panelOpen && selectedPlace && <PlaceCard />}
-        {!nav && !panelOpen && !selectedPlace && <CommuteCard />}
+        {!nav && !panelOpen && <InboxCard />}
+        {!nav && !panelOpen && !selectedPlace && !inbox && <CommuteCard />}
       </div>
       <MapControls />
       {areaLabel && <div className="area-label">{areaLabel}</div>}

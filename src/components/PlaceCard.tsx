@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Briefcase, House, Lightning, NavigationArrow, PencilSimple, Star, X } from '@phosphor-icons/react'
+import { Briefcase, House, Lightning, NavigationArrow, PaperPlaneTilt, PencilSimple, Star, X } from '@phosphor-icons/react'
 import { isFast, powerLabel } from '../lib/chargers'
 import { distance, formatDistance } from '../lib/geo'
 import { startNavigation } from '../nav/controller'
+import { isPhone, sendToCar } from '../nav/inbox'
 import { useStore } from '../state/store'
 import { RenameField } from './RenameField'
 
@@ -12,6 +13,8 @@ export function PlaceCard() {
   const position = useStore((s) => s.position)
   const favorites = useStore((s) => s.favorites)
   const [editing, setEditing] = useState(false)
+  const [sending, setSending] = useState(false)
+  const user = useStore((st) => st.user)
   const s = useStore.getState()
   if (!place) return null
   const saved = favorites.find((f) => f.id === place.id)
@@ -105,6 +108,27 @@ export function PlaceCard() {
           <Briefcase size={16} aria-hidden />
           Set as Work
         </button>
+        {/* On a phone, signed in: send the place to the car, where it shows up ready to go. */}
+        {user && isPhone() && (
+          <button
+            className="btn place-card__send"
+            disabled={sending}
+            onClick={async () => {
+              setSending(true)
+              try {
+                await sendToCar({ ...place, name })
+                s.showToast('Sent. It will show up in your car.')
+              } catch {
+                s.showToast('Couldn’t send it. Check the connection.')
+              } finally {
+                setSending(false)
+              }
+            }}
+          >
+            <PaperPlaneTilt size={16} aria-hidden />
+            Send to car
+          </button>
+        )}
       </div>
     </section>
   )

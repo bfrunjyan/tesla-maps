@@ -117,6 +117,8 @@ interface State {
   accountOpen: boolean
   /** The driving history sheet (opened from the account). */
   historyOpen: boolean
+  /** A place sent from the driver's phone, waiting to be shown (see nav/inbox.ts). */
+  inbox: { place: Place; sentAt: string } | null
 }
 
 interface Actions {
@@ -229,6 +231,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   authMethods: null,
   accountOpen: false,
   historyOpen: false,
+  inbox: null,
 
   set: (patch) => {
     set(patch)

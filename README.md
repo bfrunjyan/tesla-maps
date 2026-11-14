@@ -165,6 +165,14 @@ route whatever its direction (35 m plus GPS allowance), or driving the route bac
 Guidance continues on the old route until the new one arrives. A request that takes over
 12 s is dropped and tried again; at most one new route every 8 s.
 
+## Send to car
+
+On a phone, signed in, every place card has "Send to car". The place waits in the account
+(`server/routes/inbox.ts`, newest only, for 24 hours); the car, signed in to the same
+account, checks every 15 seconds while its screen is on and shows "From your phone" with
+Navigate (`src/nav/inbox.ts`, `src/components/InboxCard.tsx`). Each device has its own id,
+so the phone never gets its own place back, and a place is shown once.
+
 ## Near the destination
 
 From 800 m before the destination (the last stop of a trip), a card under the directions

@@ -19,7 +19,7 @@ interface PlaceIn {
   category: string | null
 }
 
-function parsePlace(v: unknown): PlaceIn | null {
+export function parsePlace(v: unknown): PlaceIn | null {
   if (!v || typeof v !== 'object') return null
   const p = v as Record<string, unknown>
   const lon = Number(p.lon)
