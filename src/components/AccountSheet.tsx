@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { ArrowClockwise, CaretRight, ChartBar, CircleNotch, SignOut, Trash, X } from '@phosphor-icons/react'
+import { ArrowClockwise, Car, CaretRight, ChartBar, CircleNotch, SignOut, Trash, X } from '@phosphor-icons/react'
 import { localDay, sumTotals, weekStart } from '../history/driveLog'
 import { fetchDays } from '../history/recorder'
 import { api, ApiError } from '../services/api'
 import { completeSignIn, deleteAccount, signOut } from '../state/session'
 import { useStore } from '../state/store'
+import { vehicleSpec } from '../vehicle/catalog'
 import { AuthForms } from './AuthForms'
+import { BatteryIcon } from './BatteryIcon'
 
 /** Account sheet in the car: QR sign-in (scan with phone) or sign in on screen. */
 export function AccountSheet() {
@@ -49,6 +51,10 @@ export function AccountSheet() {
 
 function SignedOut() {
   return (
+    <>
+    <div className="account__car">
+      <CarEntry />
+    </div>
     <div className="sheet__cols">
       <section className="sheet__col">
         <h3 className="sheet__subtitle">Scan with your phone</h3>
@@ -61,6 +67,7 @@ function SignedOut() {
         <AuthForms onSignedIn={completeSignIn} returnTo={location.pathname} />
       </section>
     </div>
+    </>
   )
 }
 
@@ -144,6 +151,29 @@ function QrPairing() {
   )
 }
 
+/** The way to the car and its battery, with the battery level now. */
+function CarEntry() {
+  const set = useStore((s) => s.set)
+  const vehicle = useStore((s) => s.vehicle)
+  const battery = useStore((s) => s.battery)
+  const charging = useStore((s) => s.battery?.source === 'tesla' && s.tesla.reading?.charging === 'charging')
+  const spec = vehicleSpec(vehicle)
+  const pct = battery ? Math.round(battery.pct) : null
+  const sub = !spec ? 'Choose your car to see charge at arrival' : pct == null ? `${spec.title} · set the battery level` : `${spec.title} · ${pct}%${charging ? ', charging' : ''}`
+  return (
+    <button className="account__entry" onClick={() => set({ accountOpen: false, carSheetOpen: true })}>
+      <span className="account__entry-icon" aria-hidden>
+        {pct != null ? <BatteryIcon pct={pct} size={24} charging={charging} /> : <Car size={22} weight="bold" />}
+      </span>
+      <span className="account__entry-text">
+        <span className="account__entry-title">Your car</span>
+        <span className="account__entry-sub">{sub}</span>
+      </span>
+      <CaretRight size={20} weight="bold" aria-hidden className="account__entry-caret" />
+    </button>
+  )
+}
+
 /** The way into driving history, with this week's distance so far. */
 function HistoryEntry() {
   const set = useStore((s) => s.set)
@@ -192,6 +222,7 @@ function SignedIn() {
           <span className="account__email">{user.email}</span>
         </div>
       </div>
+      <CarEntry />
       <HistoryEntry />
       <p className="sheet__text">Home, Work, favorites, recent destinations and driving history are saved to your account and sync to any car you sign in to.</p>
       {error && <p className="field__error" role="alert">{error}</p>}

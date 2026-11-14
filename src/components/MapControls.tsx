@@ -1,12 +1,12 @@
 import { useEffect, type ReactNode } from 'react'
-import { Car, Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal, UserCircle } from '@phosphor-icons/react'
+import { Cube, GearSix, GlobeHemisphereEast, Lightning, MapPin, NavigationArrow, TrafficSignal, UserCircle } from '@phosphor-icons/react'
 import { cardinal } from '../lib/geo'
 import { trafficTileUrl } from '../map/style'
 import { usingGoogle } from '../services/googleMaps'
 import { isLite, useStore } from '../state/store'
-import { BatteryIcon } from './BatteryIcon'
 import { GpsIndicator } from './Location'
 import { SettingsPopover } from './SettingsPopover'
+import { SpeedSign } from './SpeedSign'
 
 const HIDE_AFTER_MS = 6000
 const MAPBOX_TRAFFIC = !!trafficTileUrl()
@@ -34,9 +34,6 @@ export function MapControls() {
   const settingsOpen = useStore((s) => s.settingsOpen)
   const lite = useStore(isLite)
   const user = useStore((s) => s.user)
-  const vehicle = useStore((s) => s.vehicle)
-  const battery = useStore((s) => s.battery)
-  const charging = useStore((s) => s.battery?.source === 'tesla' && s.tesla.reading?.charging === 'charging')
   const google = useStore((s) => usingGoogle(s))
   // The Google map has its own traffic; the standard map needs the Mapbox token.
   const HAS_TRAFFIC = google || MAPBOX_TRAFFIC
@@ -68,20 +65,7 @@ export function MapControls() {
     <div className="controls">
       <div className="controls__top">
       <GpsIndicator />
-      <button
-        className="surface battery-chip"
-        aria-label={battery ? `Battery ${Math.round(battery.pct)} percent${charging ? ', charging' : ''}. Open car and battery` : vehicle ? 'Set battery level' : 'Choose your car'}
-        onClick={() => s.set({ carSheetOpen: true, toolsVisible: false })}
-      >
-        {battery ? (
-          <>
-            <BatteryIcon pct={battery.pct} size={21} charging={charging} />
-            <span className="battery-chip__pct">{Math.round(battery.pct)}%</span>
-          </>
-        ) : (
-          <Car size={22} />
-        )}
-      </button>
+      <SpeedSign />
       <button
         className="surface account-btn"
         aria-label={user ? `Account: ${user.email}` : 'Sign in'}

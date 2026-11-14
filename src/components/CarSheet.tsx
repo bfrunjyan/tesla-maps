@@ -7,7 +7,7 @@ import { ago, readingLine } from '../vehicle/liveBattery'
 import { chooseTeslaCar, connectTesla, disconnectTesla, readTesla } from '../vehicle/tesla'
 import { BatteryIcon } from './BatteryIcon'
 
-/** Your car and its battery level. Opens from the battery chip on the map. */
+/** Your car and its battery level. Opens from Your car in the profile. */
 export function CarSheet() {
   const vehicle = useStore((s) => s.vehicle)
   const set = useStore((s) => s.set)

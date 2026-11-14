@@ -556,16 +556,14 @@ h2, p { margin: 0; }
 }
 .scrim[data-visible='true'] { opacity: 1; pointer-events: auto; }
 
-/* Speed-limit sign and the car's speed, bottom left during guidance (above the map credits). */
+/* Speed-limit sign and the car's speed during guidance: a chip in the top-right row,
+   beside the GPS chip, the same height as the buttons there. */
 .speed {
-  position: absolute;
-  left: var(--gutter);
-  bottom: 40px;
-  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 14px 5px 5px;
+  gap: 7px;
+  height: var(--chip);
+  padding: 0 12px 0 4px;
   border-radius: 999px;
   background: var(--surface);
   box-shadow: var(--shadow);
@@ -574,19 +572,19 @@ h2, p { margin: 0; }
 .speed__limit {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 5px solid #e82127;
+  width: 38px;
+  height: 38px;
+  border: 4px solid #e82127;
   border-radius: 50%;
   background: #fff;
   color: #111;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 .speed__now { display: flex; align-items: baseline; gap: 3px; transition: color 160ms ease; }
-.speed__value { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.speed__value { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .speed__unit { font-size: 12px; font-weight: 600; color: var(--text-muted); }
 .speed[data-over='true'] .speed__now,
 .speed[data-over='true'] .speed__unit { color: #e82127; }
@@ -898,6 +896,7 @@ h2, p { margin: 0; }
 .account__entry-title { font-size: 16px; font-weight: 700; }
 .account__entry-sub { font-size: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .account__entry-caret { flex: none; color: var(--text-faint); }
+.account__car { padding-right: 16px; }
 
 /* ------------------------------------------------------- driving history */
 .hist { width: min(780px, 100%); }
@@ -1308,21 +1307,6 @@ h2, p { margin: 0; }
 /* ------------------------------------------------------- car & battery */
 .battery-icon[data-level='low'] { color: #f39c12; }
 .battery-icon[data-level='critical'] { color: var(--danger); }
-.battery-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-width: var(--chip);
-  height: var(--chip);
-  padding: 0 10px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  transition: transform 140ms var(--ease-out);
-}
-.battery-chip:active { transform: scale(0.95); }
 .arrival { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--text); white-space: nowrap; }
 .arrival[data-level='low'] { color: #d98a0b; }
 .arrival[data-level='critical'] { color: var(--danger); }

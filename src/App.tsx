@@ -5,7 +5,6 @@ import { CommuteCard } from './components/CommuteCard'
 import { InboxCard } from './components/InboxCard'
 import { GuidanceCard } from './components/GuidanceCard'
 import { LocationSheet } from './components/Location'
-import { SpeedSign } from './components/SpeedSign'
 import { MapControls } from './components/MapControls'
 import { PlaceCard } from './components/PlaceCard'
 import { SearchBox } from './components/SearchBox'
@@ -97,7 +96,6 @@ function MapApp() {
       </div>
       <MapControls />
       {areaLabel && <div className="area-label">{areaLabel}</div>}
-      <SpeedSign />
       {accountOpen && (
         <Suspense fallback={null}>
           <AccountSheet />
