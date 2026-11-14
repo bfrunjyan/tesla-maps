@@ -65,7 +65,7 @@ First load: ~464 KB (Brotli; was 2.1 MB uncompressed). After a deploy only the a
 
 The server keeps a feed of every charging station in `CHARGER_COUNTRIES` (default `AM`),
 refreshed every 12 hours and saved in Postgres, and serves it at `GET /api/chargers`. The
-app shows them as pins (red = fast, 50 kW+; white = standard) with an All / Fast filter on
+app shows them as Tesla-red pins with a white bolt (fast = 50 kW+) with an All / Fast filter on
 the map and in the Charging tab.
 
 - **OpenStreetMap** (always on): about 85 stations in Armenia, few with power listed.

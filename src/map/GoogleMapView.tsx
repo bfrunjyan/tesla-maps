@@ -22,7 +22,7 @@ import { loadArmenianLabels } from './armenianLabels'
 import { createLaneCallout, guiding } from './laneCallout'
 import { gpuName, isSlowGpu, watchFrameRate } from './performance'
 import { needsRedraw, syncPool, trafficAhead, type AheadState } from './routeAhead'
-import { ROUTE, TRAFFIC } from './style'
+import { CHARGER_PIN, ROUTE, TRAFFIC } from './style'
 
 const CAR_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
   <path d="M20 4 L32 34 L20 27.5 L8 34 Z" fill="#e5262f" stroke="#ffffff" stroke-opacity=".9" stroke-width="1.6" stroke-linejoin="round"/>
@@ -31,9 +31,9 @@ const pinSvg = (fill: string, letter?: string) => `<svg viewBox="0 0 32 42" widt
   <path d="M16 1C8 1 2 7 2 15c0 10.5 14 25.5 14 25.5S30 25.5 30 15C30 7 24 1 16 1z" fill="${fill}" stroke="#fff" stroke-width="2"/>
   ${letter ? `<text x="16" y="20.5" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">${letter}</text>` : '<circle cx="16" cy="15" r="5" fill="#fff"/>'}
 </svg>`
-/** Charger pin: a map pin with a lightning bolt (red = fast, white = standard), as on the standard map. */
-const chargerPinSvg = (fast: boolean) => {
-  const [fill, line] = fast ? ['#e5262f', '#ffffff'] : ['#f4f4f4', '#26272b']
+/** Charger pin: Tesla red with a white bolt, as on the standard map. */
+const chargerPinSvg = () => {
+  const [fill, line] = [CHARGER_PIN.fill, CHARGER_PIN.mark]
   return `<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true">
   <path d="M16 1.5C8.5 1.5 2.5 7.3 2.5 15c0 10.2 13.5 25 13.5 25S29.5 25.2 29.5 15C29.5 7.3 23.5 1.5 16 1.5z" fill="${fill}" stroke="${line}" stroke-width="2"/>
   <path transform="translate(7 6) scale(.75)" d="M13 2 4 14h7l-1 8 9-12h-7z" fill="${line}"/>
@@ -153,7 +153,7 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     if (!s.showChargers) return
     chargerMarkers = filterChargers(shownChargers(s), s.chargerFilter).map((c) => {
       const fast = isFast(c)
-      const content = el(chargerPinSvg(fast), 'gcharger')
+      const content = el(chargerPinSvg(), 'gcharger')
       if (c.maxKw != null) {
         const kw = document.createElement('span')
         kw.className = 'gcharger__kw'

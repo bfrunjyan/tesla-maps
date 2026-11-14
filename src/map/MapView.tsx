@@ -11,7 +11,7 @@ import { FALLBACK_CENTER, selectRoute } from '../nav/controller'
 import { reverseGeocode } from '../services/search'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
-import { applyLook, buildStyle, ROUTE, setTrafficVisible, TRAFFIC, trafficTileUrl } from './style'
+import { applyLook, buildStyle, CHARGER_PIN, ROUTE, setTrafficVisible, TRAFFIC, trafficTileUrl } from './style'
 import { sliceRoute } from '../nav/routeTraffic'
 import { stopLetter, stopsOf } from '../nav/stops'
 import { shownRoute } from '../nav/trafficSync'
@@ -35,7 +35,7 @@ const stopPinSvg = (letter: string, last: boolean) => `<svg viewBox="0 0 32 42" 
   <text x="16" y="20.5" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">${letter}</text>
 </svg>`
 
-/** Charger pin, drawn once per kind: a map pin with a lightning bolt (red = fast, white = standard; both read on the dark and light map). */
+/** Charger pin image: a map pin with a lightning bolt (reads on the dark and the light map). */
 function chargerPin(fill: string, stroke: string, bolt: string) {
   const scale = 2
   const canvas = document.createElement('canvas')
@@ -282,15 +282,14 @@ export function MapView() {
 
     function ensureChargerLayer() {
       if (map.getSource('chargers')) return
-      map.addImage('pin-fast', chargerPin('#e5262f', '#ffffff', '#ffffff'), { pixelRatio: 2 })
-      map.addImage('pin-std', chargerPin('#f4f4f4', '#26272b', '#26272b'), { pixelRatio: 2 })
+      map.addImage('pin-charger', chargerPin(CHARGER_PIN.fill, CHARGER_PIN.mark, CHARGER_PIN.mark), { pixelRatio: 2 })
       map.addSource('chargers', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addLayer({
         id: 'chargers',
         type: 'symbol',
         source: 'chargers',
         layout: {
-          'icon-image': ['case', ['get', 'fast'], 'pin-fast', 'pin-std'],
+          'icon-image': 'pin-charger',
           'icon-anchor': 'bottom',
           'icon-allow-overlap': true,
           'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 12, 0.9, 16, 1.1],
