@@ -57,10 +57,10 @@ describe('geo', () => {
   })
 
   it('formats distances and durations for the driver', () => {
-    expect(formatDistance(43)).toBe('40 m')
-    expect(formatDistance(260)).toBe('250 m')
-    expect(formatDistance(1520)).toBe('1.5 km')
-    expect(formatDistance(23400)).toBe('23 km')
+    expect(formatDistance(43)).toBe('40\u00a0m')
+    expect(formatDistance(260)).toBe('250\u00a0m')
+    expect(formatDistance(1520)).toBe('1.5\u00a0km')
+    expect(formatDistance(23400)).toBe('23\u00a0km')
     expect(formatDuration(20)).toBe('1 min')
     expect(formatDuration(3720)).toBe('1 hr 2 min')
   })

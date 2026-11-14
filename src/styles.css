@@ -291,7 +291,8 @@ h2, p { margin: 0; }
 }
 
 .place-card { padding: 8px 6px 14px 18px; }
-.place-card__head { display: flex; align-items: flex-start; gap: 2px; }
+.place-card__head { display: flex; align-items: flex-start; gap: 0; }
+.place-card__head .icon-btn--sm { margin-top: 6px; }
 .place-card__titles { flex: 1; min-width: 0; padding: 12px 0 0; }
 .place-card__title { font-size: 19px; font-weight: 700; line-height: 1.25; text-wrap: balance; }
 .place-card__sub { margin-top: 6px; color: var(--text-muted); font-size: 14px; line-height: 1.4; }
@@ -1186,6 +1187,8 @@ h2, p { margin: 0; }
   background: var(--surface-raised);
   font-size: 13px;
   font-weight: 600;
+  /* A chip is one line ("Power not listed"); chips that don't fit move to the next row. */
+  white-space: nowrap;
   color: var(--text);
 }
 .spec[data-fast='true'] { background: rgba(229, 38, 47, 0.16); color: var(--danger); }

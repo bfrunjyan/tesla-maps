@@ -59,13 +59,14 @@ export function cardinal(heading: number) {
   return CARDINALS[Math.round((((heading % 360) + 360) % 360) / 45) % 8]
 }
 
+/** "250 m", "1.5 km". The number and unit are joined by a no-break space, so they never split across lines. */
 export function formatDistance(m: number): string {
   if (!isFinite(m)) return ''
   if (m < 1000) {
     const step = m < 100 ? 10 : 50
-    return `${Math.max(step, Math.round(m / step) * step)} m`
+    return `${Math.max(step, Math.round(m / step) * step)}\u00a0m`
   }
-  return `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`
+  return `${(m / 1000).toFixed(m < 10000 ? 1 : 0)}\u00a0km`
 }
 
 export function formatDuration(s: number): string {

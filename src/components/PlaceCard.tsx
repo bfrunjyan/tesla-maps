@@ -66,15 +66,15 @@ export function PlaceCard() {
           )}
         </div>
         {!editing && (
-          <button className="icon-btn" aria-label="Rename" onClick={() => setEditing(true)}>
-            <PencilSimple size={22} />
+          <button className="icon-btn icon-btn--sm" aria-label="Rename" onClick={() => setEditing(true)}>
+            <PencilSimple size={18} />
           </button>
         )}
-        <button className="icon-btn" aria-label={fav ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={fav} onClick={() => s.toggleFavorite({ ...place, name })}>
-          <Star size={22} weight={fav ? 'fill' : 'bold'} className={fav ? 'is-fav' : undefined} />
+        <button className="icon-btn icon-btn--sm" aria-label={fav ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={fav} onClick={() => s.toggleFavorite({ ...place, name })}>
+          <Star size={18} weight={fav ? 'fill' : 'bold'} className={fav ? 'is-fav' : undefined} />
         </button>
-        <button className="icon-btn" aria-label="Close" onClick={() => s.set({ selectedPlace: null })}>
-          <X size={22} weight="bold" />
+        <button className="icon-btn icon-btn--sm" aria-label="Close" onClick={() => s.set({ selectedPlace: null })}>
+          <X size={18} weight="bold" />
         </button>
       </header>
       <div className="place-card__actions">
