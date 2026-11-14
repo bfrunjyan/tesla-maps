@@ -36,50 +36,53 @@ export function PlaceCard() {
           ) : (
             <h2 className="place-card__title">{name}</h2>
           )}
-          {charger ? (
-            <>
-              <p className="place-card__sub">{[charger.operator !== name ? charger.operator : null, dist].filter(Boolean).join(' · ') || 'Charging station'}</p>
-              <ul className="specs" aria-label="Charger details">
-                <li className="spec" data-fast={isFast(charger)}>
-                  <Lightning size={16} aria-hidden />
-                  {powerLabel(charger) ?? 'Power not listed'}
-                </li>
-                {charger.connectors.map((c) => (
-                  <li key={c} className="spec">{c}</li>
-                ))}
-                {charger.points != null && <li className="spec">{charger.points} {charger.points === 1 ? 'point' : 'points'}</li>}
-                {charger.status && (
-                  <li className="spec" data-status={charger.status.state}>
-                    {charger.status.state === 'free'
-                      ? charger.status.free != null && charger.status.total != null
-                        ? `${charger.status.free} of ${charger.status.total} free`
-                        : 'Free'
-                      : charger.status.state === 'busy'
-                        ? 'Busy'
-                        : 'Offline'}
-                  </li>
-                )}
-              </ul>
-            </>
-          ) : (
-            <p className="place-card__sub">{[place.address, dist].filter(Boolean).join(' · ')}</p>
-          )}
         </div>
-        {!editing && (
-          <button className="icon-btn icon-btn--sm" aria-label="Rename" onClick={() => setEditing(true)}>
-            <PencilSimple size={18} />
+        <div className="place-card__tools">
+          {!editing && (
+            <button className="icon-btn place-card__tool" aria-label="Rename" onClick={() => setEditing(true)}>
+              <PencilSimple size={18} />
+            </button>
+          )}
+          <button className="icon-btn place-card__tool" aria-label={fav ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={fav} onClick={() => s.toggleFavorite({ ...place, name })}>
+            <Star size={18} weight={fav ? 'fill' : 'bold'} className={fav ? 'is-fav' : undefined} />
           </button>
-        )}
-        <button className="icon-btn icon-btn--sm" aria-label={fav ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={fav} onClick={() => s.toggleFavorite({ ...place, name })}>
-          <Star size={18} weight={fav ? 'fill' : 'bold'} className={fav ? 'is-fav' : undefined} />
-        </button>
-        <button className="icon-btn icon-btn--sm" aria-label="Close" onClick={() => s.set({ selectedPlace: null })}>
-          <X size={18} weight="bold" />
-        </button>
+          <button className="icon-btn place-card__tool" aria-label="Close" onClick={() => s.set({ selectedPlace: null })}>
+            <X size={18} weight="bold" />
+          </button>
+        </div>
       </header>
+      {/* Below the buttons, the details get the card's full width. */}
+      {charger ? (
+        <>
+          <p className="place-card__sub">{[charger.operator !== name ? charger.operator : null, dist].filter(Boolean).join(' · ') || 'Charging station'}</p>
+          <ul className="specs" aria-label="Charger details">
+            <li className="spec" data-fast={isFast(charger)}>
+              <Lightning size={15} aria-hidden />
+              {powerLabel(charger) ?? 'Power not listed'}
+            </li>
+            {charger.connectors.map((c) => (
+              <li key={c} className="spec">{c}</li>
+            ))}
+            {charger.points != null && <li className="spec">{charger.points} {charger.points === 1 ? 'point' : 'points'}</li>}
+            {charger.status && (
+              <li className="spec" data-status={charger.status.state}>
+                {charger.status.state === 'free'
+                  ? charger.status.free != null && charger.status.total != null
+                    ? `${charger.status.free} of ${charger.status.total} free`
+                    : 'Free'
+                  : charger.status.state === 'busy'
+                    ? 'Busy'
+                    : 'Offline'}
+              </li>
+            )}
+          </ul>
+        </>
+      ) : (
+        <p className="place-card__sub">{[place.address, dist].filter(Boolean).join(' · ')}</p>
+      )}
       <div className="place-card__actions">
         <button className="btn btn--primary" onClick={() => startNavigation({ ...place, name })}>
-          <NavigationArrow size={20} aria-hidden />
+          <NavigationArrow size={18} aria-hidden />
           Navigate
         </button>
         <button
@@ -89,7 +92,7 @@ export function PlaceCard() {
             s.showToast('Home saved')
           }}
         >
-          <House size={18} aria-hidden />
+          <House size={16} aria-hidden />
           Set as Home
         </button>
         <button
@@ -99,7 +102,7 @@ export function PlaceCard() {
             s.showToast('Work saved')
           }}
         >
-          <Briefcase size={18} aria-hidden />
+          <Briefcase size={16} aria-hidden />
           Set as Work
         </button>
       </div>

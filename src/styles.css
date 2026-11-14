@@ -290,15 +290,20 @@ h2, p { margin: 0; }
   .card { opacity: 0; transform: translateY(-6px); }
 }
 
-.place-card { padding: 8px 6px 14px 18px; }
-.place-card__head { display: flex; align-items: flex-start; gap: 0; }
-.place-card__head .icon-btn--sm { margin-top: 6px; }
-.place-card__titles { flex: 1; min-width: 0; padding: 12px 0 0; }
-.place-card__title { font-size: 19px; font-weight: 700; line-height: 1.25; text-wrap: balance; }
-.place-card__sub { margin-top: 6px; color: var(--text-muted); font-size: 14px; line-height: 1.4; }
-.place-card__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-right: 12px; }
-.place-card__actions .btn--primary { flex: 1 1 100%; }
-.place-card__actions .btn:not(.btn--primary) { flex: 1 1 0; font-size: 14px; padding: 0 10px; }
+.place-card { padding: 6px 4px 12px 14px; }
+/* Only the title shares a row with the buttons; the details below use the full width. */
+.place-card__head { display: flex; align-items: flex-start; gap: 2px; }
+.place-card__titles { flex: 1; min-width: 0; padding-top: 9px; }
+.place-card__title { font-size: 17px; font-weight: 700; line-height: 1.22; letter-spacing: -0.01em; text-wrap: balance; }
+.place-card__tools { display: flex; flex: none; }
+.place-card__tool { width: 34px; height: 40px; }
+.place-card__sub { margin-top: 4px; padding-right: 12px; color: var(--text-muted); font-size: 13px; line-height: 1.35; }
+.place-card .specs { margin-top: 8px; padding-right: 12px; }
+.place-card .spec { min-height: 26px; padding: 0 9px; font-size: 12.5px; }
+.place-card__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-right: 10px; }
+.place-card__actions .btn { min-height: 42px; }
+.place-card__actions .btn--primary { flex: 1 1 100%; min-height: 46px; }
+.place-card__actions .btn:not(.btn--primary) { flex: 1 1 0; gap: 6px; padding: 0 8px; font-size: 13px; white-space: nowrap; }
 
 /* ----------------------------------------------------------- guidance */
 .guide { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
