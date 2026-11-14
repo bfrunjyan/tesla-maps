@@ -311,13 +311,13 @@ export function setTrafficVisible(map: MLMap, on: boolean) {
 }
 
 /** Mapbox Traffic v1 vector tiles, when a token is configured (VITE_MAPBOX_TOKEN). */
-export function trafficTileUrl(): string | null {
+export function trafficTileUrl(freshMs = 600_000): string | null {
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
   if (!token) return null
   // Mapbox tells browsers to cache a refused tile (401/403) for 12 hours. A tag that
   // changes every 10 minutes gives each page load fresh tile URLs, so a refusal that's
   // since been fixed (e.g. a domain added to the token) can't stick. Live traffic tiles
   // are only cacheable for 90 s anyway.
-  const bucket = Math.floor(Date.now() / 600_000)
+  const bucket = Math.floor(Date.now() / freshMs)
   return `https://api.mapbox.com/v4/mapbox.mapbox-traffic-v1/{z}/{x}/{y}.vector.pbf?access_token=${token}&fresh=${bucket}`
 }

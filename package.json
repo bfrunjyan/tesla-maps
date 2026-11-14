@@ -21,9 +21,11 @@
   "dependencies": {
     "@fontsource-variable/montserrat": "^5.3.0",
     "@hono/node-server": "^2.1.8",
+    "@mapbox/vector-tile": "3.0.0",
     "@phosphor-icons/react": "^2.1.10",
     "hono": "^4.13.18",
     "maplibre-gl": "^6.18.0",
+    "pbf": "5.1.2",
     "postgres": "^4.1.1",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",

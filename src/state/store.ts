@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { load, save } from '../lib/storage'
 import { api, type AuthMethods, type SavedPlaces, type User } from '../services/api'
 import type { RouteOption } from '../nav/routeOptions'
+import type { TrafficSpan } from '../nav/routeTraffic'
 import type { ChargerFilter } from '../lib/chargers'
 import { clampPct } from '../nav/battery'
 import type { Battery, Charger, NavProgress, Place, Position, Route, TeslaLink, TeslaNote, Vehicle } from '../types'
@@ -60,6 +61,10 @@ interface State {
   mapBearing: number
   satellite: boolean
   showTraffic: boolean
+  /** While a route is shown, traffic is drawn on the route only; true shows it on all roads again for this trip. */
+  trafficAllRoads: boolean
+  /** Traffic along the route being shown (the chosen option, or the one being driven). */
+  routeTraffic: { route: Route; spans: TrafficSpan[] } | null
   themeSetting: ThemeSetting
   /** Map detail setting; 'auto' uses autoLite, detected per car. */
   mapDetail: MapDetail
@@ -167,6 +172,8 @@ export const useStore = create<State & Actions>((set, get) => ({
   mapBearing: 0,
   satellite: load('satellite', false),
   showTraffic: load('showTraffic', false),
+  trafficAllRoads: false,
+  routeTraffic: null,
   themeSetting: load<ThemeSetting>('themeSetting', 'auto'),
   mapDetail: load<MapDetail>('mapDetail', 'auto'),
   autoLite: load('autoLite', false),

@@ -192,6 +192,17 @@ VITE_MAPBOX_TOKEN=pk.your_token_here
 Without a token the traffic button says so. Mapbox's terms require a paid vehicle license
 for in-car apps, including during development, so check with Mapbox before relying on it.
 
+### Traffic on the route
+
+With a route on screen (the highlighted choice in the preview, or the one being driven), the
+route line is drawn in traffic colours: green where traffic flows, then orange, red and dark
+red. Mapic reads the traffic tiles the route passes through (`src/services/traffic.ts`) and
+matches them to the route by position and direction of travel (`src/nav/routeTraffic.ts`),
+so a jam on the opposite carriageway doesn't colour the driver's side. Stretches with no
+traffic data keep the route's blue. It refreshes every 3 minutes. While a route is shown,
+traffic on other roads is hidden; the traffic button brings it back for that trip. The
+colours are only as good as the traffic provider's data.
+
 ### Appearance
 
 Map settings (gear at the bottom of the map tools) offer Auto / Light / Dark, like the car.

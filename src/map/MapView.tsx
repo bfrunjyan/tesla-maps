@@ -11,7 +11,9 @@ import { FALLBACK_CENTER, selectRoute } from '../nav/controller'
 import { reverseGeocode } from '../services/search'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
-import { applyLook, buildStyle, ROUTE, setTrafficVisible, trafficTileUrl } from './style'
+import { applyLook, buildStyle, ROUTE, setTrafficVisible, TRAFFIC, trafficTileUrl } from './style'
+import { sliceRoute } from '../nav/routeTraffic'
+import { shownRoute } from '../nav/trafficSync'
 import { createNavZoom, followZoom } from './camera'
 import { setMap } from './mapApi'
 import { gpuName, isSlowGpu, watchFrameRate } from './performance'
@@ -209,6 +211,41 @@ export function MapView() {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': ROUTE.line, 'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 10, 2.5, 16, 8.5, 20, 46] },
       }, 'road-label')
+      // Traffic along the route, drawn over the route line: green where it flows, up to
+      // dark red where it is jammed. Stretches with no traffic data keep the route's blue.
+      map.addSource('route-traffic', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addLayer({
+        id: 'route-traffic',
+        type: 'line',
+        source: 'route-traffic',
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': ['match', ['get', 'level'], 'low', TRAFFIC.free, 'moderate', TRAFFIC.moderate, 'heavy', TRAFFIC.heavy, TRAFFIC.severe],
+          'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 10, 2.5, 16, 8.5, 20, 46],
+        },
+      }, 'road-label')
+    }
+
+    function drawRouteTraffic() {
+      const src = map.getSource('route-traffic') as GeoJSONSource | undefined
+      if (!src) return
+      const s = useStore.getState()
+      const route = shownRoute(s.nav)
+      const traffic = s.routeTraffic
+      if (!route || !traffic || traffic.route !== route) return src.setData({ type: 'FeatureCollection', features: [] })
+      // While driving, only what is still ahead of the car.
+      const fromM = s.nav?.status === 'choosing' ? 0 : (s.nav?.progress?.alongM ?? 0)
+      src.setData({
+        type: 'FeatureCollection',
+        features: traffic.spans
+          .filter((span) => span.toM > fromM)
+          .map((span) => ({
+            type: 'Feature' as const,
+            properties: { level: span.level },
+            geometry: { type: 'LineString' as const, coordinates: sliceRoute(route, Math.max(span.fromM, fromM), span.toM) },
+          }))
+          .filter((f) => f.geometry.coordinates.length > 1),
+      })
     }
 
     function drawRoute() {
@@ -295,7 +332,9 @@ export function MapView() {
     function applyLayerToggles() {
       const s = useStore.getState()
       applyLook(map, s.theme, s.satellite, s.threeD && !isLite(s), s.showPois)
-      setTrafficVisible(map, s.showTraffic)
+      // With a route on screen, traffic is drawn on the route itself; other roads stay
+      // clear unless the driver turns them back on for this trip.
+      setTrafficVisible(map, s.showTraffic && (!s.nav || s.trafficAllRoads))
     }
 
     // Measured fallback: switch to lite if the map keeps drawing slowly while moving.
@@ -327,6 +366,7 @@ export function MapView() {
       drawChargers()
       applyLayerToggles()
       drawRoute()
+      drawRouteTraffic()
     })
 
     /* ----------------------------------------------- user gestures */
@@ -440,6 +480,8 @@ export function MapView() {
         s.theme !== prev.theme ||
         s.satellite !== prev.satellite ||
         s.showTraffic !== prev.showTraffic ||
+        s.trafficAllRoads !== prev.trafficAllRoads ||
+        !s.nav !== !prev.nav ||
         isLite(s) !== isLite(prev)
       ) {
         if (isLite(s) !== isLite(prev)) {
@@ -459,6 +501,7 @@ export function MapView() {
         // zooming out for the route preview), which used to leave the route undrawn.
         drawRoute()
       }
+      if (s.routeTraffic !== prev.routeTraffic || s.nav !== prev.nav) drawRouteTraffic()
       if (s.nav?.destination !== prev.nav?.destination) {
         destMarker?.remove()
         destMarker = null

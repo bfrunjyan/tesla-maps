@@ -7,6 +7,7 @@ import { PlaceCard } from './components/PlaceCard'
 import { SearchBox } from './components/SearchBox'
 import { MapView } from './map/MapView'
 import { initLocation, toggleSimulation } from './nav/controller'
+import { startRouteTraffic } from './nav/trafficSync'
 import { initSession } from './state/session'
 import { useStore } from './state/store'
 
@@ -47,6 +48,7 @@ function MapApp() {
 
   useEffect(() => {
     initLocation()
+    startRouteTraffic()
   }, [])
 
   return (

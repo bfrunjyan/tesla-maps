@@ -28,6 +28,8 @@ export function MapControls() {
   const showChargers = useStore((s) => s.showChargers)
   const satellite = useStore((s) => s.satellite)
   const showTraffic = useStore((s) => s.showTraffic)
+  const trafficAllRoads = useStore((s) => s.trafficAllRoads)
+  const inRoute = useStore((s) => !!s.nav)
   const settingsOpen = useStore((s) => s.settingsOpen)
   const lite = useStore(isLite)
   const user = useStore((s) => s.user)
@@ -41,16 +43,21 @@ export function MapControls() {
     if (!toolsVisible || settingsOpen) return
     const t = window.setTimeout(() => useStore.getState().set({ toolsVisible: false }), HIDE_AFTER_MS)
     return () => window.clearTimeout(t)
-  }, [toolsVisible, settingsOpen, threeD, showPois, showChargers, northUp, satellite, showTraffic])
+  }, [toolsVisible, settingsOpen, threeD, showPois, showChargers, northUp, satellite, showTraffic, trafficAllRoads])
 
   // Settings close together with the tool column.
   useEffect(() => {
     if (!toolsVisible && settingsOpen) useStore.getState().set({ settingsOpen: false })
   }, [toolsVisible, settingsOpen])
 
+  const trafficOn = HAS_TRAFFIC && showTraffic && (!inRoute || trafficAllRoads)
   const toggleTraffic = () => {
     if (!HAS_TRAFFIC) return s.showToast('Traffic needs a Mapbox token (VITE_MAPBOX_TOKEN)')
-    s.set({ showTraffic: !showTraffic })
+    // With a route on screen the route itself shows its traffic; this button then
+    // adds or removes traffic on the other roads, for this trip only.
+    if (!inRoute) return s.set({ showTraffic: !showTraffic })
+    if (trafficOn) s.set({ trafficAllRoads: false })
+    else s.set({ showTraffic: true, trafficAllRoads: true })
   }
 
   return (
@@ -101,7 +108,7 @@ export function MapControls() {
           <Tool label="Satellite view" active={satellite} onClick={() => s.set({ satellite: !satellite })}>
             <GlobeHemisphereEast size={24} />
           </Tool>
-          <Tool label="Traffic" active={showTraffic && HAS_TRAFFIC} onClick={toggleTraffic}>
+          <Tool label={inRoute ? 'Traffic on other roads' : 'Traffic'} active={trafficOn} onClick={toggleTraffic}>
             <TrafficSignal size={24} />
           </Tool>
           <Tool label="Show places" active={showPois} onClick={() => s.set({ showPois: !showPois })}>
