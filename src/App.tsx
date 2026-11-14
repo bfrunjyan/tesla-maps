@@ -6,7 +6,7 @@ import { MapControls } from './components/MapControls'
 import { PlaceCard } from './components/PlaceCard'
 import { SearchBox } from './components/SearchBox'
 import { MapView } from './map/MapView'
-import { usingGoogle } from './services/googleMaps'
+import { googleMapId, usingGoogle } from './services/googleMaps'
 import { initLocation, toggleSimulation } from './nav/controller'
 import { startRouteTraffic } from './nav/trafficSync'
 import { initSession } from './state/session'
@@ -49,8 +49,10 @@ function MapApp() {
   const carSheetOpen = useStore((s) => s.carSheetOpen)
   const chargerBar = useStore((s) => s.showChargers && !s.nav)
   const google = useStore((s) => usingGoogle(s))
-  // Google's dark or light map is chosen when the map is made, so a new theme makes a new map.
+  // Google's dark or light map, and its Map ID (with or without places), are chosen when
+  // the map is made, so changing either makes a new map.
   const theme = useStore((s) => s.theme)
+  const googleId = useStore((s) => googleMapId(s.showPois))
   // Adding a stop to a trip: the search takes the place of the trip card until a place is picked.
   const addingStop = useStore((s) => s.panelOpen && s.searchMode === 'add-stop')
 
@@ -63,7 +65,7 @@ function MapApp() {
     <div className="app" data-charger-bar={chargerBar}>
       {google ? (
         <Suspense fallback={null}>
-          <GoogleMapView key={theme} />
+          <GoogleMapView key={`${theme}-${googleId}`} />
         </Suspense>
       ) : (
         <MapView />

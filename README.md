@@ -237,11 +237,13 @@ each route request (traffic along the route is a higher-priced request), and a r
 new request. If the map can't load or Google refuses the key, Mapic goes back to the
 standard map and says so.
 
-The Google map's look comes from the "Mapic ID" Map ID (`2fe7d8736e3feaf45574c39f`) in
-the Google Cloud console: a JavaScript vector map with Google's **Monochrome** style for
-light mode and Google's **Dark** style for dark mode. Mapic picks light or dark from its
-theme. The look is changed in the console (Map Styles), with no code change; a different
-Map ID can be set with `VITE_GOOGLE_MAP_ID`.
+The Google map's look comes from Map IDs in the Google Cloud console (listed in
+`src/services/googleMaps.ts`): JavaScript vector maps with Google's **Monochrome** style
+for light mode and Google's **Dark** style for dark mode. Mapic picks light or dark from
+its theme. Google can't hide its place icons from code, so there are two Map IDs, one with
+place icons and one with them hidden; the places button switches between them. The look
+is changed in the console (Map Styles), with no code change. The 3D button tilts the map
+(Google shows buildings in 3D only when tilted); 3D off is a flat view.
 
 ### Appearance
 

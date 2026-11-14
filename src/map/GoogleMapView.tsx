@@ -1,8 +1,9 @@
 /**
  * The map on Google Maps (test). Does what the standard map does for driving: the car
  * and the follow camera with turn zoom, route choices, the route in traffic colours,
- * the trip's stops, a dropped pin, and Google's traffic on other roads. Not yet:
- * charger pins, the places toggle, 3D on/off and the lite map.
+ * the trip's stops, a dropped pin, and Google's traffic on other roads. 3D off and the
+ * lite map give a flat view; the places toggle switches Map ID (see googleMapId). Not
+ * yet: charger pins.
  */
 import { useEffect, useRef } from 'react'
 import { lerp, lerpAngle, lerpLngLat, type LngLat } from '../lib/geo'
@@ -13,7 +14,7 @@ import { stopLetter, stopsOf } from '../nav/stops'
 import { shownRoute } from '../nav/trafficSync'
 import { googleMapId, loadGoogleMaps } from '../services/googleMaps'
 import { reverseGeocode } from '../services/search'
-import { useStore } from '../state/store'
+import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { createNavZoom, followZoom } from './camera'
 import { ROUTE, TRAFFIC } from './style'
@@ -75,14 +76,19 @@ async function start(container: HTMLDivElement): Promise<() => void> {
   const { ColorScheme } = (await google.maps.importLibrary('core')) as google.maps.CoreLibrary
   const { AdvancedMarkerElement } = (await google.maps.importLibrary('marker')) as google.maps.MarkerLibrary
   const s0 = useStore.getState()
-  const tiltFor = (s: { northUp: boolean }) => (s.northUp ? 0 : 55)
+  /**
+   * Google draws its buildings in 3D only when the map is tilted, and has no switch for
+   * them, so "3D" off (or the lite map) is a flat, straight-down view.
+   */
+  const tiltFor = (s: Parameters<typeof isLite>[0] & { northUp: boolean; threeD: boolean }) =>
+    s.northUp || !s.threeD || isLite(s) ? 0 : 55
 
   const map = new Map(container, {
     center: toLatLng([s0.position?.lon ?? FALLBACK_CENTER.lon, s0.position?.lat ?? FALLBACK_CENTER.lat]),
     zoom: 16.4,
     tilt: tiltFor(s0),
     heading: 0,
-    mapId: googleMapId(),
+    mapId: googleMapId(s0.showPois),
     renderingType: RenderingType.VECTOR,
     colorScheme: s0.theme === 'dark' ? ColorScheme.DARK : ColorScheme.LIGHT,
     mapTypeId: s0.satellite ? 'hybrid' : 'roadmap',
@@ -327,6 +333,10 @@ async function start(container: HTMLDivElement): Promise<() => void> {
       moveTo(s.position, at, prev.position ? 950 : 0)
     }
     if ((s.follow && !prev.follow) || s.northUp !== prev.northUp || (s.nav?.route !== prev.nav?.route && s.nav?.status !== 'choosing')) recenter()
+    if (tiltFor(s) !== tiltFor(prev) && s.nav?.status !== 'choosing') {
+      if (s.follow && s.position) recenter()
+      else map.moveCamera({ tilt: tiltFor(s) })
+    }
     if (s.showTraffic !== prev.showTraffic || s.trafficAllRoads !== prev.trafficAllRoads || !s.nav !== !prev.nav) applyTraffic()
     if (s.satellite !== prev.satellite) map.setMapTypeId(s.satellite ? 'hybrid' : 'roadmap')
     if (s.nav?.options !== prev.nav?.options || s.nav?.selected !== prev.nav?.selected || s.nav?.status !== prev.nav?.status) drawOptions(s.nav?.options !== prev.nav?.options)

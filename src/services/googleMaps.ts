@@ -10,14 +10,21 @@ export function googleKey(): string | null {
 }
 
 /**
- * The Google map's look: the "Mapic ID" Map ID in the Google Cloud console, a vector
- * JavaScript map with Google's Monochrome style for light mode and Google's Dark style
- * for dark mode. A Map ID is not a secret; VITE_GOOGLE_MAP_ID can point at another one.
+ * The Google map's look comes from Map IDs in the Google Cloud console: vector JavaScript
+ * maps with a light style (Monochrome) and a dark style (Dark). Google can't hide its
+ * place icons from code once a Map ID is in use, so there are two Map IDs, with and
+ * without places, and the map is rebuilt when the driver turns places on or off.
+ * Map IDs are not secrets.
  */
-const MAPIC_MAP_ID = '2fe7d8736e3feaf45574c39f'
+const MAP_IDS = {
+  /** "Mapic ID": Monochrome and Dark, with place icons. */
+  places: '2fe7d8736e3feaf45574c39f',
+  /** Monochrome and Dark with place icons hidden. Empty until it is set up. */
+  noPlaces: '',
+}
 
-export function googleMapId(): string {
-  return (import.meta.env.VITE_GOOGLE_MAP_ID as string | undefined) || MAPIC_MAP_ID
+export function googleMapId(showPlaces: boolean): string {
+  return (!showPlaces && MAP_IDS.noPlaces) || MAP_IDS.places
 }
 
 /** Whether Mapic is using the Google map and Google routing now. */
