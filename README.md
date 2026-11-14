@@ -231,10 +231,13 @@ Settings → Map offers **Google (test)**. It swaps the map for Google's
 (`src/services/googleRoutes.ts`): routes that take live traffic into account, with
 Google's traffic level for each stretch (normal, slow, jam) drawn on the route, and Google's
 traffic layer for other roads. Google's terms allow its routes and traffic only on a Google
-map, so the two are switched together. Search stays on Photon. Not on the Google map yet:
-charger pins, the places toggle, 3D on/off and the lite map. Google bills each map load and
-each route request (traffic along the route is a higher-priced request), and a reroute is a
-new request. If the map can't load or Google refuses the key, Mapic goes back to the
+map, so the two are switched together. Search stays on Photon. Charger pins work as on the
+standard map. With places on, tapping one of Google's place icons opens it in Mapic, with
+its name and address from Google's Places API (New); without that API the place opens
+unnamed with Mapic's own address. The lite map (set by hand, or automatically on a slow
+GPU or a low frame rate) is a flat view. Google bills each map load, each route request
+(traffic along the route is a higher-priced request; a reroute is a new request) and each
+place lookup. If the map can't load or Google refuses the key, Mapic goes back to the
 standard map and says so.
 
 The Google map's look comes from Map IDs in the Google Cloud console (listed in

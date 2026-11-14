@@ -382,7 +382,12 @@ h2, p { margin: 0; }
   align-items: flex-end;
   gap: 10px;
   z-index: 2;
+  /* The box spans the whole top row and the tools column; only the buttons themselves
+     take taps, so the map underneath stays tappable. */
+  pointer-events: none;
 }
+.controls > *, .tools-wrap > * { pointer-events: auto; }
+.controls > .tools-wrap { pointer-events: none; }
 .compass {
   display: flex;
   align-items: center;
@@ -535,6 +540,32 @@ h2, p { margin: 0; }
 /* -------------------------------------------------------- map markers */
 .car-marker { width: 40px; height: 40px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); pointer-events: none; }
 .dest-marker { width: 32px; height: 42px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)); }
+/* Charger pins on the Google map: the pin, with its power underneath from street level. */
+.gcharger {
+  position: relative;
+  width: 32px;
+  height: 42px;
+  cursor: pointer;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+}
+.gcharger svg { display: block; }
+.gcharger__kw {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  display: none;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: #fff;
+  text-shadow: 0 0 2px #1c1b1d, 0 0 2px #1c1b1d, 0 0 3px #1c1b1d;
+  pointer-events: none;
+}
+.map[data-charger-labels='true'] .gcharger__kw { display: block; }
+.map[data-charger-small='true'] .gcharger { transform: scale(0.65); }
 .charger-marker {
   display: grid;
   place-items: center;
