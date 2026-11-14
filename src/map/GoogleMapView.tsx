@@ -31,15 +31,15 @@ const pinSvg = (fill: string, letter?: string) => `<svg viewBox="0 0 32 42" widt
   <path d="M16 1C8 1 2 7 2 15c0 10.5 14 25.5 14 25.5S30 25.5 30 15C30 7 24 1 16 1z" fill="${fill}" stroke="#fff" stroke-width="2"/>
   ${letter ? `<text x="16" y="20.5" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">${letter}</text>` : '<circle cx="16" cy="15" r="5" fill="#fff"/>'}
 </svg>`
-/** Charger pin: Tesla red with a white bolt, as on the standard map. */
+/** Charger pin: solid Tesla red with a white bolt, no outline, as on the standard map. */
 const chargerPinSvg = () => {
-  const [fill, line] = [CHARGER_PIN.fill, CHARGER_PIN.mark]
+  const { fill, mark } = CHARGER_PIN
   return `<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true">
-  <path d="M16 1.5C8.5 1.5 2.5 7.3 2.5 15c0 10.2 13.5 25 13.5 25S29.5 25.2 29.5 15C29.5 7.3 23.5 1.5 16 1.5z" fill="${fill}" stroke="${line}" stroke-width="2"/>
-  <path transform="translate(7 6) scale(.75)" d="M13 2 4 14h7l-1 8 9-12h-7z" fill="${line}"/>
+  <path d="M16 1.5C8.5 1.5 2.5 7.3 2.5 15c0 10.2 13.5 25 13.5 25S29.5 25.2 29.5 15C29.5 7.3 23.5 1.5 16 1.5z" fill="${fill}" stroke="${fill}" stroke-width="2"/>
+  <path transform="translate(7 6) scale(.75)" d="M13 2 4 14h7l-1 8 9-12h-7z" fill="${mark}"/>
 </svg>`
 }
-const LEVEL_COLOUR ={ low: TRAFFIC.free, moderate: TRAFFIC.moderate, heavy: TRAFFIC.heavy, severe: TRAFFIC.severe }
+const LEVEL_COLOUR = { low: TRAFFIC.free, moderate: TRAFFIC.moderate, heavy: TRAFFIC.heavy, severe: TRAFFIC.severe }
 
 function el(html: string, className: string) {
   const d = document.createElement('div')

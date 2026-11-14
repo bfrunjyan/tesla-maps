@@ -282,7 +282,8 @@ export function MapView() {
 
     function ensureChargerLayer() {
       if (map.getSource('chargers')) return
-      map.addImage('pin-charger', chargerPin(CHARGER_PIN.fill, CHARGER_PIN.mark, CHARGER_PIN.mark), { pixelRatio: 2 })
+      // Solid red, no outline (the edge is drawn in the fill colour), white bolt.
+      map.addImage('pin-charger', chargerPin(CHARGER_PIN.fill, CHARGER_PIN.fill, CHARGER_PIN.mark), { pixelRatio: 2 })
       map.addSource('chargers', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addLayer({
         id: 'chargers',

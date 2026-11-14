@@ -67,7 +67,7 @@ export const PALETTES: Record<Theme, Palette> = {
   },
 }
 
-/** Charging station pins, on both maps: Tesla red with a white bolt, fast or not (the Fast filter and the kW label tell them apart). */
+/** Charging station pins, on both maps: solid Tesla red (no outline) with a white bolt, fast or not (the Fast filter and the kW label tell them apart). */
 export const CHARGER_PIN = { fill: '#e82127', mark: '#ffffff' }
 
 export const ROUTE = { line: '#3e6ae1', casing: '#1d3a8f' }
