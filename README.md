@@ -165,6 +165,16 @@ route whatever its direction (35 m plus GPS allowance), or driving the route bac
 Guidance continues on the old route until the new one arrives. A request that takes over
 12 s is dropped and tried again; at most one new route every 8 s.
 
+## Picking a trip back up
+
+If the page reloads mid-drive (the car's browser tab crashed, was reloaded, or came back
+from sleep as a fresh page), Mapic carries on with the trip (`src/nav/resume.ts`). While
+guidance runs, the destination, stops and fastest/shortest choice are kept on the device;
+on the next start, a trip that was running in the last 30 minutes, and whose destination
+is more than 150 m away, is planned again from the car's first GPS fix (or after 10 s
+without one) and guidance continues, with a "Picking up your trip" message. Ending a trip
+or arriving forgets it.
+
 ## Lanes
 
 From 600 m before a junction, a blue bubble on the map points at it and shows one sign per

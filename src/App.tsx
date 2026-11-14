@@ -7,7 +7,8 @@ import { PlaceCard } from './components/PlaceCard'
 import { SearchBox } from './components/SearchBox'
 import { MapView } from './map/MapView'
 import { googleMapId, usingGoogle } from './services/googleMaps'
-import { initLocation, toggleSimulation } from './nav/controller'
+import { initLocation, resumeTrip, toggleSimulation } from './nav/controller'
+import { rememberTrips, resumeIfInterrupted } from './nav/resume'
 import { startRouteTraffic } from './nav/trafficSync'
 import { initSession } from './state/session'
 import { useStore } from './state/store'
@@ -61,6 +62,9 @@ function MapApp() {
   useEffect(() => {
     initLocation()
     startRouteTraffic()
+    // A trip cut short by a crash or reload carries on by itself.
+    rememberTrips()
+    resumeIfInterrupted(resumeTrip)
   }, [])
 
   return (

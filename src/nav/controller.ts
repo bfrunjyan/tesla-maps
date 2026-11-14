@@ -3,7 +3,7 @@ import { recordDriving } from '../history/recorder'
 import { bearing, distance, type LngLat } from '../lib/geo'
 import { cancelSpeech, setVoiceEnabled, speak } from '../lib/voice'
 import { reverseGeocode } from '../services/search'
-import { fetchRoute, fetchRouteOptions } from '../services/routing'
+import { fetchRoute, fetchRouteOptions, type RoutePreference } from '../services/routing'
 import { samePlace, useStore, type NavState } from '../state/store'
 import type { NavProgress, Place, Position, Route } from '../types'
 import { vehicleSpec } from '../vehicle/catalog'
@@ -63,6 +63,20 @@ export function startNavigation(dest: Place) {
   s.addRecent(dest)
   s.set({ panelOpen: false, searchMode: 'navigate', selectedPlace: null, query: '', follow: false, turnListOpen: false, tripOpen: false })
   return planPreview([dest], false)
+}
+
+/**
+ * Carries on a trip that was cut short (see nav/resume.ts): plans it from where the car
+ * is and starts guidance on the same kind of route as before, with no preview to tap
+ * through. If it can't be planned, the preview stays with its Try again.
+ */
+export async function resumeTrip(stops: Place[], preference: RoutePreference) {
+  get().set({ panelOpen: false, selectedPlace: null, turnListOpen: false, tripOpen: false })
+  await planPreview(stops, true)
+  const nav = get().nav
+  if (nav?.status !== 'choosing' || !nav.options?.length) return
+  const i = nav.options.findIndex((o) => o.route.preference === preference)
+  goWithRoute(i >= 0 ? i : 0)
 }
 
 /** Plans the same trip again (after "No route" or a failed connection). */
