@@ -1,0 +1,150 @@
+<!doctype html>
+<!--
+  Voice check: shows what this browser can do for spoken directions. Open it in the
+  car (mapic.site/voice.html), tap the three buttons, and note what you hear.
+  Stands alone: no app code, nothing is sent anywhere.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Mapic voice check</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 14px 16px; background: #1c1b1d; color: #f1eff0; font: 15px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      h1 { margin: 0 0 10px; font-size: 18px; }
+      .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+      button { flex: 1 1 200px; min-height: 56px; padding: 0 14px; border: 0; border-radius: 8px; background: #3e6ae1; color: #fff; font: inherit; font-weight: 600; }
+      button:active { background: #3459c4; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 6px 8px; border-top: 1px solid rgba(255, 255, 255, 0.1); text-align: left; vertical-align: top; }
+      th { width: 34%; font-weight: 600; color: #a7a3a5; }
+      td { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+      .yes { color: #4cd08a; font-weight: 700; }
+      .no { color: #ff7a80; font-weight: 700; }
+      .wait { color: #f5c542; }
+      small { color: #807c7e; }
+    </style>
+  </head>
+  <body>
+    <h1>Mapic voice check</h1>
+    <div class="buttons">
+      <button id="b-voice">1 · Speak</button>
+      <button id="b-app">2 · Speak, the way Mapic does</button>
+      <button id="b-beep">3 · Play two beeps</button>
+    </div>
+    <table>
+      <tr><th>Speech engine</th><td id="r-engine"></td></tr>
+      <tr><th>Voices</th><td id="r-voices"></td></tr>
+      <tr><th>1 · Speak</th><td id="r-voice">not tried</td></tr>
+      <tr><th>2 · Mapic's way</th><td id="r-app">not tried</td></tr>
+      <tr><th>3 · Beep (sound engine)</th><td id="r-tone">not tried</td></tr>
+      <tr><th>3 · Beep (audio file)</th><td id="r-file">not tried</td></tr>
+      <tr><th>Browser</th><td id="r-ua"></td></tr>
+    </table>
+    <script>
+      var $ = function (id) { return document.getElementById(id) }
+      var set = function (id, cls, text) { $(id).innerHTML = '<span class="' + cls + '">' + text + '</span>' }
+      var synth = 'speechSynthesis' in window ? window.speechSynthesis : null
+      var PHRASE = 'Voice check. In two hundred metres, turn left.'
+
+      $('r-ua').textContent = navigator.userAgent
+      set('r-engine', synth ? 'yes' : 'no', synth ? 'Present' : 'Missing: this browser cannot speak text')
+
+      function showVoices() {
+        if (!synth) return set('r-voices', 'no', 'None')
+        var v = synth.getVoices()
+        if (!v.length) return set('r-voices', 'no', '0 voices <small>(checked ' + new Date().toLocaleTimeString() + ')</small>')
+        var names = v.slice(0, 6).map(function (x) { return x.name + ' [' + x.lang + ']' }).join(', ')
+        set('r-voices', 'yes', v.length + ' voices: ' + names + (v.length > 6 ? ', …' : ''))
+      }
+      showVoices()
+      if (synth) {
+        // Some browsers fill the list a moment after the page opens.
+        if (synth.addEventListener) synth.addEventListener('voiceschanged', showVoices)
+        setTimeout(showVoices, 1000)
+        setTimeout(showVoices, 4000)
+      }
+
+      /** Speaks the phrase and reports what the browser says happened. */
+      function trySpeak(row, cancelFirst) {
+        if (!synth) return set(row, 'no', 'No speech engine')
+        var events = []
+        var done = false
+        var report = function (cls, text) { set(row, cls, text + ' <small>[' + (events.join(' → ') || 'no events') + ']</small>') }
+        try {
+          if (cancelFirst) synth.cancel()
+          var u = new SpeechSynthesisUtterance(PHRASE)
+          u.lang = 'en-US'
+          var voices = synth.getVoices()
+          for (var i = 0; i < voices.length; i++) if (voices[i].lang.toLowerCase().indexOf('en') === 0) { u.voice = voices[i]; break }
+          u.onstart = function () { events.push('started'); report('wait', 'Speaking…') }
+          u.onend = function () { events.push('ended'); done = true; report('yes', 'The browser says it spoke. Did you hear it?') }
+          u.onerror = function (e) { events.push('error: ' + (e.error || 'unknown')); done = true; report('no', 'The browser refused') }
+          synth.speak(u)
+          report('wait', 'Asked the browser to speak…')
+          setTimeout(function () {
+            if (done) return
+            if (events.length) return report('wait', 'Started but has not finished')
+            report('no', 'Nothing happened: the browser accepted the request and stayed silent (speaking: ' + synth.speaking + ', waiting: ' + synth.pending + ')')
+          }, 6000)
+        } catch (err) {
+          set(row, 'no', 'Failed: ' + (err && err.message))
+        }
+      }
+
+      /** A short sine tone as a WAV file, so an ordinary audio player can be tried too. */
+      function wavUrl(hz, seconds) {
+        var rate = 8000, n = Math.floor(rate * seconds), bytes = new Uint8Array(44 + n), view = new DataView(bytes.buffer)
+        var text = function (at, s) { for (var i = 0; i < s.length; i++) bytes[at + i] = s.charCodeAt(i) }
+        text(0, 'RIFF'); view.setUint32(4, 36 + n, true); text(8, 'WAVEfmt '); view.setUint32(16, 16, true)
+        view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, rate, true); view.setUint32(28, rate, true)
+        view.setUint16(32, 1, true); view.setUint16(34, 8, true); text(36, 'data'); view.setUint32(40, n, true)
+        for (var i = 0; i < n; i++) {
+          var fade = Math.min(1, i / 200, (n - i) / 200)
+          bytes[44 + i] = 128 + Math.round(90 * fade * Math.sin((2 * Math.PI * hz * i) / rate))
+        }
+        return URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }))
+      }
+
+      function beeps() {
+        // First beep (higher): the browser's sound engine.
+        try {
+          var Ctx = window.AudioContext || window.webkitAudioContext
+          if (!Ctx) set('r-tone', 'no', 'No sound engine')
+          else {
+            var ctx = new Ctx(), osc = ctx.createOscillator(), gain = ctx.createGain()
+            osc.frequency.value = 880
+            gain.gain.value = 0.3
+            osc.connect(gain); gain.connect(ctx.destination)
+            if (ctx.resume) ctx.resume()
+            osc.start(); osc.stop(ctx.currentTime + 0.6)
+            osc.onended = function () { set('r-tone', ctx.state === 'running' ? 'yes' : 'no', 'Played a high beep (engine: ' + ctx.state + '). Did you hear it?') }
+            set('r-tone', 'wait', 'Playing… (engine: ' + ctx.state + ')')
+          }
+        } catch (err) {
+          set('r-tone', 'no', 'Failed: ' + (err && err.message))
+        }
+        // Second beep (lower), a second later: an ordinary audio file.
+        setTimeout(function () {
+          try {
+            var a = new Audio(wavUrl(440, 0.6))
+            a.onended = function () { set('r-file', 'yes', 'Played a low beep. Did you hear it?') }
+            a.onerror = function () { set('r-file', 'no', 'The audio file could not be played') }
+            set('r-file', 'wait', 'Playing…')
+            var p = a.play()
+            if (p && p.catch) p.catch(function (err) { set('r-file', 'no', 'Refused: ' + (err && (err.name || err.message))) })
+          } catch (err) {
+            set('r-file', 'no', 'Failed: ' + (err && err.message))
+          }
+        }, 1200)
+      }
+
+      $('b-voice').onclick = function () { trySpeak('r-voice', false) }
+      $('b-app').onclick = function () { trySpeak('r-app', true) }
+      $('b-beep').onclick = beeps
+    </script>
+  </body>
+</html>
