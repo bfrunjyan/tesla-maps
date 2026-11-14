@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { withNumberFirst } from '../lib/address'
 import { load, save } from '../lib/storage'
 import { api, type AuthMethods, type SavedPlaces, type User } from '../services/api'
 import type { RouteOption } from '../nav/routeOptions'
@@ -205,10 +206,11 @@ export const useStore = create<State & Actions>((set, get) => ({
   tripOpen: false,
   guideHidden: load('guideHidden', false),
 
-  home: load<Place | null>('home', null),
-  work: load<Place | null>('work', null),
-  favorites: load<Place[]>('favorites', []),
-  recents: load<Place[]>('recents', []),
+  // Places saved before addresses were written number first get the new order on load.
+  home: withNumberFirst(load<Place | null>('home', null)),
+  work: withNumberFirst(load<Place | null>('work', null)),
+  favorites: load<Place[]>('favorites', []).map(withNumberFirst),
+  recents: load<Place[]>('recents', []).map(withNumberFirst),
 
   voiceOn: load('voiceOn', true),
   lang: load<Lang>('lang', 'en-US'),
@@ -340,7 +342,11 @@ export const useStore = create<State & Actions>((set, get) => ({
     if (battery !== prev) save('battery', battery)
     set({ tesla: link, teslaNote: note, battery })
   },
-  setPlaces: ({ home, work, favorites, recents }) => {
+  setPlaces: (saved) => {
+    const home = withNumberFirst(saved.home)
+    const work = withNumberFirst(saved.work)
+    const favorites = saved.favorites.map(withNumberFirst)
+    const recents = saved.recents.map(withNumberFirst)
     save('home', home)
     save('work', work)
     save('favorites', favorites)

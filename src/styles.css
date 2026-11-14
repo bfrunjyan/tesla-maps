@@ -258,10 +258,10 @@ h2, p { margin: 0; }
 .row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
   min-height: 60px;
-  padding: 8px 16px;
+  padding: 8px 14px;
   text-align: left;
   transition: background-color 120ms ease;
 }
@@ -270,16 +270,17 @@ h2, p { margin: 0; }
   flex: none;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--surface-raised);
   color: var(--text-muted);
 }
-.row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.row__title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row__sub { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row__meta { flex: none; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+/* Smaller than the car's own list text so more of a street name fits before the "…". */
+.row__title { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row__sub { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row__meta { flex: none; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* -------------------------------------------------------------- cards */
 .card {

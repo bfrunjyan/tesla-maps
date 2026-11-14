@@ -3,6 +3,7 @@
  * and Overpass (category lists). Both are free public servers meant for light
  * use; swap this module for a licensed provider before launch.
  */
+import { streetLine } from '../lib/address'
 import type { Place, PlaceCategory } from '../types'
 
 const PHOTON = 'https://photon.komoot.io'
@@ -37,10 +38,10 @@ function categoryOf(key?: string, value?: string): PlaceCategory {
 
 function photonToPlace(f: { properties: PhotonProps; geometry: { coordinates: [number, number] } }): Place {
   const p = f.properties
-  const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
-  const name = p.name || streetLine || p.district || p.city || 'Unnamed place'
+  const street = streetLine(p.street, p.housenumber)
+  const name = p.name || street || p.district || p.city || 'Unnamed place'
   const area = [p.district, p.city ?? p.locality].filter((x, i, a) => x && a.indexOf(x) === i)
-  const address = [p.name ? streetLine : '', ...area].filter(Boolean).join(', ') || p.country || ''
+  const address = [p.name ? street : '', ...area].filter(Boolean).join(', ') || p.country || ''
   return {
     id: `${p.osm_type ?? 'X'}${p.osm_id ?? Math.random()}`,
     name,
@@ -148,7 +149,7 @@ export async function categorySearch(kind: CategoryKind, near: { lon: number; la
           if (lat == null || lon == null) return null
           const t = e.tags ?? {}
           const name = t.name || t['name:en'] || t.operator || t.brand || 'Unnamed'
-          const address = [t['addr:street'] && `${t['addr:street']} ${t['addr:housenumber'] ?? ''}`.trim(), t.operator && t.operator !== name ? t.operator : '', t.cuisine?.replace(/;/g, ', ')]
+          const address = [t['addr:street'] && streetLine(t['addr:street'], t['addr:housenumber']), t.operator && t.operator !== name ? t.operator : '', t.cuisine?.replace(/;/g, ', ')]
             .filter(Boolean)
             .join(' · ')
           return {
