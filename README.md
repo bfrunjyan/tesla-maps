@@ -226,7 +226,9 @@ lane, left to right, as painted on the road: the lanes to take bright, lanes tha
 
 The lanes come from the open routing server, which reads OpenStreetMap's `turn:lanes`: they
 show only at junctions where mappers have added lanes (about a quarter of the turns on test
-routes in central Yerevan). Google's route data has no lanes, so with the Google map Mapic
+routes in central Yerevan; 35% of 643 turns over 80 routes across the city). The busiest
+junctions without them are listed in `docs/lane-gaps.md` with edit links (refresh with
+`node scripts/lane-gaps.mjs > docs/lane-gaps.md`). Google's route data has no lanes, so with the Google map Mapic
 asks the open server for the same trip at the same time (up to 4 s) and copies its lanes onto
 Google's turns at the same junction (within 40 m, turning the same way).
 
