@@ -611,9 +611,14 @@ h2, p { margin: 0; }
   transition: opacity 200ms ease;
 }
 @starting-style { .modal { opacity: 0; } }
+/* The sheets (Your car, Account) are drawn at 70% so they leave more of the map in view
+   on the car's screen. zoom shrinks text, buttons and spacing together; the height limit
+   is divided by it so a sheet can still use the full screen height. */
 .sheet {
+  --sheet-scale: 0.7;
+  zoom: var(--sheet-scale);
   width: min(460px, 100%);
-  max-height: calc(100dvh - 2 * var(--gutter));
+  max-height: calc((100dvh - 2 * var(--gutter)) / var(--sheet-scale));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 8px 8px 24px 24px;
