@@ -4,6 +4,7 @@
  */
 import { decodePolyline6, distance, type LngLat } from '../lib/geo'
 import { climbStats, estimateKWh } from '../nav/energy'
+import { lanesFromValhalla, transferLanes, type ValhallaLane } from '../nav/lanes'
 import { buildOptions, type RouteOption } from '../nav/routeOptions'
 import type { Maneuver, Route, RouteStop } from '../types'
 import { usingGoogle } from './googleMaps'
@@ -22,6 +23,7 @@ interface ValhallaManeuver {
   begin_shape_index: number
   length: number
   time: number
+  lanes?: ValhallaLane[]
 }
 
 export type RoutePreference = 'fastest' | 'shortest'
@@ -65,7 +67,9 @@ export function tripToRoute(trip: ValhallaTrip, lang: string, preference: RouteP
       const shapeIndex = Math.min(offset + m.begin_shape_index, coords.length - 1)
       const arrival = i === leg.maneuvers.length - 1
       const wording = arrival && !lastLeg && target?.name ? stopWording(target.name, lang) : null
+      const lanes = lanesFromValhalla(m.lanes)
       maneuvers.push({
+        ...(lanes ? { lanes } : {}),
         type: m.type,
         instruction: wording?.instruction ?? m.instruction,
         verbalAlert: wording?.alert ?? m.verbal_transition_alert_instruction,
@@ -99,6 +103,8 @@ async function valhalla(from: From, to: RouteTarget[], lang: string, extra: Reco
       locations: [start, ...to.map((t) => ({ lat: t.lat, lon: t.lon }))],
       costing: 'auto',
       directions_options: { units: 'kilometers', language: lang },
+      // Lane guidance at junctions where the map data has the lanes.
+      turn_lanes: true,
       ...extra,
     }),
     signal,
@@ -112,9 +118,60 @@ async function valhalla(from: From, to: RouteTarget[], lang: string, extra: Reco
 
 const shortestOptions = { costing_options: { auto: { shortest: true } } }
 
+/** How long Google's routes wait for the lanes before going without them (about 0.2 s normally). */
+const LANES_WAIT_MS = 2500
+
+/** Points along a line at least `stepM` apart, ends kept: Google's line, light enough to send. */
+export function thinLine(coords: LngLat[], stepM = 15): LngLat[] {
+  const out: LngLat[] = []
+  coords.forEach((c, i) => {
+    if (!out.length || i === coords.length - 1 || distance(out[out.length - 1], c) >= stepM) out.push(c)
+  })
+  return out
+}
+
+/** The open server's turns, with lanes, along exactly the line given (its map-matching service). */
+async function turnsAlong(route: Route, lang: string, signal: AbortSignal): Promise<Route | null> {
+  const res = await fetch(VALHALLA.replace(/\/route$/, '/trace_route'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      shape: thinLine(route.coords).map(([lon, lat]) => ({ lat, lon })),
+      costing: 'auto',
+      shape_match: 'map_snap',
+      turn_lanes: true,
+      directions_options: { units: 'kilometers', language: lang },
+    }),
+    signal,
+  })
+  const data = await res.json().catch(() => null)
+  return res.ok && data?.trip ? tripToRoute(data.trip, lang, 'fastest') : null
+}
+
+/**
+ * Google's routes with lanes added. Google's route data has none, so each route's line
+ * is given to the open routing server, which follows it on its own map and says which
+ * lanes each junction has; those are copied onto Google's turns at the same junctions.
+ * Without an answer in time, the routes go without lanes.
+ */
+async function googleWithLanes(from: From, to: RouteTarget[], lang: string, signal: AbortSignal | undefined, alternatives: boolean): Promise<Route[]> {
+  const routes = await googleRoutes(from, to, lang, signal, alternatives)
+  const lanes = new AbortController()
+  signal?.addEventListener('abort', () => lanes.abort())
+  const timer = window.setTimeout(() => lanes.abort(), LANES_WAIT_MS)
+  await Promise.all(
+    routes.map(async (r) => {
+      const traced = await turnsAlong(r, lang, lanes.signal).catch(() => null)
+      if (traced) transferLanes(r, traced)
+    }),
+  )
+  window.clearTimeout(timer)
+  return routes
+}
+
 /** One route through the stops in order (used for rerouting): keeps the driver's fastest/shortest choice. */
 export async function fetchRoute(from: From, to: RouteTarget[], lang: string, signal?: AbortSignal, preference: RoutePreference = 'fastest'): Promise<Route> {
-  if (usingGoogle()) return (await googleRoutes(from, to, lang, signal))[0]
+  if (usingGoogle()) return (await googleWithLanes(from, to, lang, signal, false))[0]
   const data = await valhalla(from, to, lang, preference === 'shortest' ? shortestOptions : {}, signal)
   return tripToRoute(data.trip, lang, preference, to)
 }
@@ -146,7 +203,7 @@ async function addEnergy(route: Route, signal?: AbortSignal): Promise<Route> {
 export async function fetchRouteOptions(from: From, to: RouteTarget[], lang: string, signal?: AbortSignal): Promise<RouteOption[]> {
   if (usingGoogle()) {
     // Google: up to three traffic-aware choices (one when there are stops on the way).
-    const routes = await googleRoutes(from, to, lang, signal, true)
+    const routes = await googleWithLanes(from, to, lang, signal, true)
     return buildOptions(await Promise.all(routes.map((r) => addEnergy(r, signal).catch(() => r))))
   }
   const [fast, short] = await Promise.allSettled([

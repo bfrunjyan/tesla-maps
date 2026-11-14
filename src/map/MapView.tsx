@@ -16,6 +16,7 @@ import { sliceRoute } from '../nav/routeTraffic'
 import { stopLetter, stopsOf } from '../nav/stops'
 import { shownRoute } from '../nav/trafficSync'
 import { createNavZoom, followZoom } from './camera'
+import { createLaneCallout, guiding } from './laneCallout'
 import { setMap } from './mapApi'
 import { gpuName, isSlowGpu, watchFrameRate } from './performance'
 
@@ -106,6 +107,18 @@ export function MapView() {
     const carMarker = new Marker({ element: el(CAR_SVG, 'car-marker'), rotationAlignment: 'map', pitchAlignment: 'map' })
     let stopMarkers: Marker[] = []
     let pinMarker: Marker | null = null
+    // Lane bubble at the next junction, its pointer on the junction (see laneCallout.ts).
+    let laneMarker: Marker | null = null
+    const updateLanes = createLaneCallout({
+      show: (el, at) => {
+        laneMarker?.remove()
+        laneMarker = new Marker({ element: el, anchor: 'right', offset: [-12, 0] }).setLngLat(at).addTo(map)
+      },
+      hide: () => {
+        laneMarker?.remove()
+        laneMarker = null
+      },
+    })
 
     /* ------------------------------------------ smooth car movement */
     let shown: { at: LngLat; heading: number } | null = null
@@ -508,6 +521,7 @@ export function MapView() {
         // zooming out for the route preview), which used to leave the route undrawn.
         drawRoute()
       }
+      if (s.nav !== prev.nav) updateLanes(guiding(s.nav) ? s.nav!.route : null, s.nav?.progress)
       if (s.routeTraffic !== prev.routeTraffic || s.nav !== prev.nav) drawRouteTraffic()
       if (s.nav?.destination !== prev.nav?.destination || s.nav?.via !== prev.nav?.via) {
         for (const m of stopMarkers) m.remove()

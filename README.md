@@ -156,6 +156,19 @@ route whatever its direction (35 m plus GPS allowance), or driving the route bac
 Guidance continues on the old route until the new one arrives. A request that takes over
 12 s is dropped and tried again; at most one new route every 8 s.
 
+## Lanes
+
+From 600 m before a junction, a blue bubble on the map points at it and shows one sign per
+lane, left to right, as painted on the road: the lanes to take bright, lanes that also work
+(but may need a change later) a little softer, the rest dimmed (`src/nav/lanes.ts`,
+`src/map/laneCallout.ts`). It disappears after the turn or when the car leaves the route.
+
+The lanes come from the open routing server, which reads OpenStreetMap's `turn:lanes`: they
+show only at junctions where mappers have added lanes (about a quarter of the turns on test
+routes in central Yerevan). Google's route data has no lanes, so with the Google map Mapic
+asks the open server for the same trip at the same time (up to 4 s) and copies its lanes onto
+Google's turns at the same junction (within 40 m, turning the same way).
+
 ## Zoom while navigating
 
 During guidance the map zooms itself (`src/map/camera.ts`): a wider view between turns that

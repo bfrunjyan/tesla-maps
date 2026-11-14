@@ -1,4 +1,5 @@
 import type { LngLat } from './lib/geo'
+import type { Lane } from './nav/lanes'
 import type { TrafficSpan } from './nav/routeTraffic'
 
 export type PlaceCategory = 'address' | 'charging' | 'food' | 'attraction' | 'poi' | 'home' | 'work' | 'pin'
@@ -105,6 +106,8 @@ export interface Maneuver {
   /** Length of the stretch that follows this maneuver, meters. */
   lengthM: number
   timeS: number
+  /** The junction's lanes, left-most first, where the map data has them. */
+  lanes?: Lane[]
 }
 
 export interface Route {

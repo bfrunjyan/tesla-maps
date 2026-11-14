@@ -547,6 +547,39 @@ h2, p { margin: 0; }
 /* -------------------------------------------------------- map markers */
 .car-marker { width: 40px; height: 40px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); pointer-events: none; }
 .dest-marker { width: 32px; height: 42px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)); }
+/* Lane bubble at the next junction: lane signs on the guidance blue, its pointer
+   (on the right) touching the junction. Same in day and night, like the turn card. */
+.lanes {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  animation: lanes-in 220ms var(--ease-out);
+}
+.lanes::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  border-block: 9px solid transparent;
+  border-left: 10px solid var(--accent);
+  transform: translateY(-50%);
+}
+.lanes-anchor--google { transform: translate(calc(-50% - 12px), 50%); }
+.lane { display: grid; place-items: center; }
+.lane__sign { display: block; width: 26px; height: 35px; }
+@keyframes lanes-in {
+  from { opacity: 0; transform: translateX(-6px) scale(0.96); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lanes { animation: none; }
+}
 /* Charger pins on the Google map: the pin, with its power underneath from street level. */
 .gcharger {
   position: relative;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LngLat } from '../lib/geo'
-import { tripToRoute, type ValhallaTrip } from './routing'
+import { thinLine, tripToRoute, type ValhallaTrip } from './routing'
 
 /** Encodes a line the way the routing server does (polyline, 6 decimals). */
 function encode(points: LngLat[]) {
@@ -107,5 +107,17 @@ describe('a route through a stop', () => {
       { lon: cafe.lon, lat: cafe.lat, atM: route.cum[2], maneuverIndex: 1 },
       { lon: office.lon, lat: office.lat, atM: route.totalM, maneuverIndex: 4 },
     ])
+  })
+})
+
+describe('thinLine', () => {
+  it('keeps points at least the step apart, and both ends', () => {
+    // A point every 5 m along a 100 m line.
+    const line = Array.from({ length: 21 }, (_, i) => [44.5 + i * 0.0000589, 40.18] as [number, number])
+    const thin = thinLine(line, 15)
+    expect(thin[0]).toEqual(line[0])
+    expect(thin.at(-1)).toEqual(line.at(-1))
+    expect(thin.length).toBeLessThanOrEqual(9)
+    expect(thin.length).toBeGreaterThanOrEqual(6)
   })
 })

@@ -17,6 +17,7 @@ import { reverseGeocode } from '../services/search'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { createNavZoom, followZoom } from './camera'
+import { createLaneCallout, guiding } from './laneCallout'
 import { gpuName, isSlowGpu, watchFrameRate } from './performance'
 import { needsRedraw, syncPool, trafficAhead, type AheadState } from './routeAhead'
 import { ROUTE, TRAFFIC } from './style'
@@ -123,6 +124,20 @@ async function start(container: HTMLDivElement): Promise<() => void> {
   const car = new AdvancedMarkerElement({ content: carEl, zIndex: 1000 })
   let stopMarkers: google.maps.marker.AdvancedMarkerElement[] = []
   let pinMarker: google.maps.marker.AdvancedMarkerElement | null = null
+  // Lane bubble at the next junction (see laneCallout.ts). Google sets a marker's bottom
+  // centre on its point; the bubble is moved left and down so its pointer touches it.
+  let laneMarker: google.maps.marker.AdvancedMarkerElement | null = null
+  const updateLanes = createLaneCallout({
+    show: (el, at) => {
+      if (laneMarker) laneMarker.map = null
+      el.classList.add('lanes-anchor--google')
+      laneMarker = new AdvancedMarkerElement({ map, position: toLatLng(at), content: el, zIndex: 960 })
+    },
+    hide: () => {
+      if (laneMarker) laneMarker.map = null
+      laneMarker = null
+    },
+  })
 
   /* ------------------------------------------------------ charging stations */
   let chargerMarkers: google.maps.marker.AdvancedMarkerElement[] = []
@@ -441,6 +456,7 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     if (s.showChargers !== prev.showChargers || s.chargers !== prev.chargers || s.chargerFilter !== prev.chargerFilter) drawChargers()
     if (s.nav?.options !== prev.nav?.options || s.nav?.selected !== prev.nav?.selected || s.nav?.status !== prev.nav?.status) drawOptions(s.nav?.options !== prev.nav?.options)
     if (s.nav?.route !== prev.nav?.route || s.nav?.progress !== prev.nav?.progress || s.nav?.status !== prev.nav?.status) drawRoute()
+    if (s.nav !== prev.nav) updateLanes(guiding(s.nav) ? s.nav!.route : null, s.nav?.progress)
     if (s.routeTraffic !== prev.routeTraffic || s.nav !== prev.nav) drawRouteTraffic()
     if (s.nav?.destination !== prev.nav?.destination || s.nav?.via !== prev.nav?.via) drawStops()
     if (s.selectedPlace !== prev.selectedPlace) {
@@ -481,6 +497,7 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     for (const m of [...stopMarkers, ...chargerMarkers]) m.map = null
     if (pinMarker) pinMarker.map = null
     stopFpsWatch?.()
+    if (laneMarker) laneMarker.map = null
     car.map = null
     traffic.setMap(null)
   }
