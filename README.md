@@ -319,8 +319,11 @@ standard map and says so.
 The Google map's look comes from Map IDs in the Google Cloud console (listed in
 `src/services/googleMaps.ts`): JavaScript vector maps with Google's **Monochrome** style
 for light mode and Google's **Dark** style for dark mode. Mapic picks light or dark from
-its theme. Google can't hide its place icons from code, so there are two Map IDs, one with
-place icons and one with them hidden; the places button switches between them. The look
+its theme. Google can't hide its place icons from code, so there are two Map IDs: "Mapic
+ID" (`2fe7d8736e3feaf45574c39f`, Monochrome and Dark) and "Mapic – no places"
+(`2fe7d8736e3feaf42177d8aa`, copies of both with Point of interest → Label hidden); the
+places button switches between them (the map is rebuilt). Bus stops and metro signs are
+transit, not places, and stay. The look
 is changed in the console (Map Styles), with no code change. The 3D button tilts the map
 (Google shows buildings in 3D only when tilted); 3D off is a flat view.
 

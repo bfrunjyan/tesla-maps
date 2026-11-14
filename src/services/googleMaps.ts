@@ -19,8 +19,8 @@ export function googleKey(): string | null {
 const MAP_IDS = {
   /** "Mapic ID": Monochrome and Dark, with place icons. */
   places: '2fe7d8736e3feaf45574c39f',
-  /** Monochrome and Dark with place icons hidden. Empty until it is set up. */
-  noPlaces: '',
+  /** "Mapic – no places": Monochrome and Dark with place icons (labels) hidden. */
+  noPlaces: '2fe7d8736e3feaf42177d8aa',
 }
 
 export function googleMapId(showPlaces: boolean): string {
