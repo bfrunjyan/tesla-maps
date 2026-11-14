@@ -17,6 +17,7 @@ import { reverseGeocode } from '../services/search'
 import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { createNavZoom, followZoom } from './camera'
+import { loadArmenianLabels } from './armenianLabels'
 import { createLaneCallout, guiding } from './laneCallout'
 import { gpuName, isSlowGpu, watchFrameRate } from './performance'
 import { needsRedraw, syncPool, trafficAhead, type AheadState } from './routeAhead'
@@ -83,6 +84,8 @@ export function GoogleMapView() {
 }
 
 async function start(container: HTMLDivElement): Promise<() => void> {
+  // Armenian letters for the labels, fetched while Google's libraries load (see armenianLabels.ts).
+  const letters = loadArmenianLabels()
   const { Map, Polyline, TrafficLayer, RenderingType } = (await google.maps.importLibrary('maps')) as google.maps.MapsLibrary
   const { ColorScheme } = (await google.maps.importLibrary('core')) as google.maps.CoreLibrary
   const { AdvancedMarkerElement } = (await google.maps.importLibrary('marker')) as google.maps.MarkerLibrary
@@ -98,6 +101,7 @@ async function start(container: HTMLDivElement): Promise<() => void> {
   const tiltFor = (s: Parameters<typeof isLite>[0] & { northUp: boolean; threeD: boolean }) =>
     s.northUp || !s.threeD || isLite(s) ? 0 : 55
 
+  await letters
   const map = new Map(container, {
     center: toLatLng([s0.position?.lon ?? FALLBACK_CENTER.lon, s0.position?.lat ?? FALLBACK_CENTER.lat]),
     zoom: 16.4,
