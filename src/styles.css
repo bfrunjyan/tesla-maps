@@ -451,14 +451,25 @@ h2, p { margin: 0; }
   position: absolute;
   top: 0;
   right: calc(100% + 10px);
-  width: 300px;
-  padding: 16px;
+  width: 280px;
+  /* Never taller than the room left below its top on the car's short screen; scrolls if needed. */
+  max-height: calc(100dvh - var(--popover-top, 124px) - var(--gutter));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   transform-origin: top right;
   transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
 }
+.popover > * { flex: none; }
+/* Settings are set once in a while: a compact version of the controls. */
+.popover .setting { gap: 6px; }
+.popover .setting__label { font-size: 12px; }
+.popover .segmented { padding: 3px; gap: 3px; }
+.popover .segmented__opt { min-height: 40px; font-size: 13px; }
+.popover .setting__hint { margin-top: -4px; font-size: 11.5px; line-height: 1.4; }
 @starting-style {
   .popover { opacity: 0; transform: translateX(6px) scale(0.98); }
 }

@@ -1,5 +1,5 @@
 import { CircleHalf, Moon, Sun } from '@phosphor-icons/react'
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { googleKey } from '../services/googleMaps'
 import { isLite, useStore, type Lang, type MapDetail, type MapProvider, type ThemeSetting } from '../state/store'
 
@@ -33,9 +33,15 @@ export function SettingsPopover() {
   const lite = useStore(isLite)
   const provider = useStore((s) => s.mapProvider)
   const s = useStore.getState()
+  // Where the panel starts on screen, so its height can stop at the bottom edge.
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (el) el.style.setProperty('--popover-top', `${Math.round(el.getBoundingClientRect().top)}px`)
+  })
 
   return (
-    <div className="surface popover" role="dialog" aria-label="Map settings">
+    <div ref={ref} className="surface popover" role="dialog" aria-label="Map settings">
       <Segmented<ThemeSetting>
         label="Appearance"
         value={themeSetting}
@@ -48,7 +54,7 @@ export function SettingsPopover() {
       />
       {themeSetting === 'auto' && (
         <p className="setting__hint">
-          Now {theme}. Follows your display’s dark mode, otherwise sunrise and sunset where you are.
+          Now {theme}: follows the display, or sunrise and sunset.
         </p>
       )}
       <Segmented<MapDetail>
@@ -63,7 +69,7 @@ export function SettingsPopover() {
       />
       {mapDetail === 'auto' && (
         <p className="setting__hint">
-          {lite ? 'Lite on this car, for smoother driving: flat buildings, lighter graphics.' : 'Full detail. Switches to lite if this car draws the map slowly.'}
+          {lite ? 'Lite on this car: flat buildings, for smoother driving.' : 'Full now. Goes lite if this car draws slowly.'}
         </p>
       )}
       {googleKey() && (
@@ -78,7 +84,7 @@ export function SettingsPopover() {
             ]}
           />
           {provider === 'google' && (
-            <p className="setting__hint">Google’s map, routes and traffic. Routes planned from now on use Google. Charger pins aren’t on this map yet.</p>
+            <p className="setting__hint">Google’s map, routes and traffic, for new routes.</p>
           )}
         </>
       )}
