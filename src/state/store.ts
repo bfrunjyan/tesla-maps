@@ -8,7 +8,8 @@ import { clampPct } from '../nav/battery'
 import type { Battery, Charger, NavProgress, Place, Position, Route, TeslaLink, TeslaNote, Vehicle } from '../types'
 
 export type SearchTab = 'recents' | 'favorites' | 'charging' | 'hungry' | 'lucky'
-export type SearchMode = 'navigate' | 'set-home' | 'set-work'
+/** 'add-stop': the search panel opened from a trip, to add another place to it. */
+export type SearchMode = 'navigate' | 'set-home' | 'set-work' | 'add-stop'
 export type Lang = 'en-US' | 'ru-RU'
 export type ThemeSetting = 'auto' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
@@ -17,7 +18,12 @@ export type MapDetail = 'auto' | 'full' | 'lite'
 export type GpsStatus = 'idle' | 'needs-permission' | 'finding' | 'ok' | 'weak' | 'lost' | 'denied' | 'unavailable'
 
 export interface NavState {
+  /** The last place of the trip. */
   destination: Place
+  /** Stops to make on the way, in order (see nav/stops.ts). */
+  via?: Place[]
+  /** The driver changed the trip's stops: the preview no longer starts by itself. */
+  edited?: boolean
   route: Route | null
   progress: NavProgress | null
   status: 'routing' | 'choosing' | 'active' | 'rerouting' | 'arrived' | 'error'
@@ -80,6 +86,8 @@ interface State {
   selectedPlace: Place | null
   nav: NavState | null
   turnListOpen: boolean
+  /** The trip's stops are open in the directions card (add, remove, reorder). */
+  tripOpen: boolean
   /** The driver hid the turn-by-turn card; a small chip with the next turn stays. */
   guideHidden: boolean
 
@@ -133,7 +141,7 @@ interface Actions {
   clearPlaces: () => void
 }
 
-const samePlace = (a: Place, b: Place) =>
+export const samePlace = (a: Place, b: Place) =>
   a.id === b.id || (Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lon - b.lon) < 1e-5)
 
 export const NO_TESLA: TeslaLink = { enabled: false, connected: false, cars: [], vin: null, reading: null }
@@ -188,6 +196,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   selectedPlace: null,
   nav: null,
   turnListOpen: false,
+  tripOpen: false,
   guideHidden: load('guideHidden', false),
 
   home: load<Place | null>('home', null),
@@ -308,7 +317,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   },
   setGuideHidden: (hidden) => {
     save('guideHidden', hidden || null)
-    set({ guideHidden: hidden, turnListOpen: false })
+    set({ guideHidden: hidden, turnListOpen: false, tripOpen: false })
   },
   applyTesla: (link, note = null) => {
     const prev = get().battery

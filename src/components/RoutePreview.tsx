@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Car, NavigationArrow, X } from '@phosphor-icons/react'
+import { ArrowClockwise, Car, CircleNotch, NavigationArrow, X } from '@phosphor-icons/react'
 import { formatDistance, formatDuration } from '../lib/geo'
-import { endNavigation, goWithRoute, selectRoute } from '../nav/controller'
+import { endNavigation, goWithRoute, retryRoute, selectRoute } from '../nav/controller'
+import { stopsOf } from '../nav/stops'
 import { useStore } from '../state/store'
 import type { Route } from '../types'
 import { vehicleSpec } from '../vehicle/catalog'
 import { useArrival } from '../vehicle/useArrival'
 import { BatteryIcon } from './BatteryIcon'
+import { AddStopButton, StopsList } from './StopsList'
 
 const AUTO_START_S = 10
 
 /**
- * Route choices before guidance starts. Fastest is pre-selected and starts by
- * itself after 10 s unless the driver touches anything (then they tap Go).
+ * The trip before guidance starts: its stops (add, remove, reorder) and the route
+ * choices. Fastest is pre-selected and starts by itself after 10 s unless the driver
+ * touches anything or has changed the stops (then they tap Go).
  */
 export function RoutePreview() {
   const nav = useStore((s) => s.nav)
   const [secondsLeft, setSecondsLeft] = useState(AUTO_START_S)
-  const [auto, setAuto] = useState(true)
+  const [auto, setAuto] = useState(() => !useStore.getState().nav?.edited)
+  const choosing = nav?.status === 'choosing'
 
   // Any touch anywhere (card, map, buttons) hands control to the driver.
   useEffect(() => {
@@ -31,62 +35,83 @@ export function RoutePreview() {
     }
   }, [auto])
 
+  // The countdown runs only while there are routes to start on.
   useEffect(() => {
-    if (!auto) return
+    if (!auto || !choosing) return
     if (secondsLeft <= 0) return goWithRoute()
     const t = window.setTimeout(() => setSecondsLeft((n) => n - 1), 1000)
     return () => window.clearTimeout(t)
-  }, [auto, secondsLeft])
+  }, [auto, choosing, secondsLeft])
 
   const vehicle = useStore((s) => s.vehicle)
   const battery = useStore((s) => s.battery)
-  if (!nav?.options) return null
-  const fastest = nav.options[0].route
+  if (!nav) return null
+  const stops = stopsOf(nav)
+  const options = choosing ? nav.options ?? [] : []
+  const fastest = options[0]?.route
   const selected = nav.selected ?? 0
-  const anyEnergy = nav.options.some((o) => typeof o.route.kWh === 'number')
+  const anyEnergy = options.some((o) => typeof o.route.kWh === 'number')
   const carReady = !!vehicleSpec(vehicle) && !!battery
 
   return (
-    <section className="surface card route-preview" aria-label="Choose a route">
+    <section className="surface card route-preview" aria-label={stops.length > 1 ? 'Plan the trip' : 'Choose a route'}>
       <header className="route-preview__head">
         <div className="route-preview__titles">
-          <span className="route-preview__label">Route to</span>
-          <h2 className="route-preview__dest">{nav.destination.name}</h2>
+          <span className="route-preview__label">{stops.length > 1 ? `Trip · ${stops.length} stops` : 'Route to'}</span>
+          {stops.length === 1 && <h2 className="route-preview__dest">{nav.destination.name}</h2>}
         </div>
         <button className="icon-btn" aria-label="Cancel" onClick={endNavigation}>
           <X size={22} weight="bold" />
         </button>
       </header>
 
-      <div className="route-options" role="radiogroup" aria-label="Routes">
-        {nav.options.map((o, i) => {
-          // Compare the minutes as shown, so 52 vs 49 reads +3.
-          const extra = Math.round(o.route.totalS / 60) - Math.round(fastest.totalS / 60)
-          return (
-            <button
-              key={i}
-              role="radio"
-              aria-checked={selected === i}
-              className="route-option"
-              onClick={() => selectRoute(i)}
-            >
-              <span className="route-option__main">
-                <span className="route-option__time">{formatDuration(o.route.totalS)}</span>
-                <span className="route-option__meta">
-                  <span>{formatDistance(o.route.totalM)}</span>
-                  <ArrivalMeta route={o.route} />
+      {stops.length > 1 ? <StopsList stops={stops} busy={nav.status === 'routing'} /> : <AddStopButton count={1} />}
+
+      {nav.status === 'routing' && (
+        <p className="route-preview__state" role="status">
+          <CircleNotch weight="bold" className="spin" size={20} aria-hidden /> Finding the best route…
+        </p>
+      )}
+      {nav.status === 'error' && (
+        <div className="route-preview__error" role="alert">
+          <p className="route-preview__state">{nav.error ?? 'Couldn’t find a route.'}</p>
+          <button className="btn" onClick={retryRoute}>
+            <ArrowClockwise size={18} aria-hidden /> Try again
+          </button>
+        </div>
+      )}
+
+      {options.length > 0 && (
+        <div className="route-options" role="radiogroup" aria-label="Routes">
+          {options.map((o, i) => {
+            // Compare the minutes as shown, so 52 vs 49 reads +3.
+            const extra = Math.round(o.route.totalS / 60) - Math.round(fastest!.totalS / 60)
+            return (
+              <button
+                key={i}
+                role="radio"
+                aria-checked={selected === i}
+                className="route-option"
+                onClick={() => selectRoute(i)}
+              >
+                <span className="route-option__main">
+                  <span className="route-option__time">{formatDuration(o.route.totalS)}</span>
+                  <span className="route-option__meta">
+                    <span>{formatDistance(o.route.totalM)}</span>
+                    <ArrivalMeta route={o.route} />
+                  </span>
                 </span>
-              </span>
-              <span className="route-option__side">
-                {o.tags.map((t) => (
-                  <span key={t} className="tag" data-tag={t}>{t}</span>
-                ))}
-                {!o.tags.length && extra > 0 && <span className="route-option__extra">+{extra} min</span>}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+                <span className="route-option__side">
+                  {o.tags.map((t) => (
+                    <span key={t} className="tag" data-tag={t}>{t}</span>
+                  ))}
+                  {!o.tags.length && extra > 0 && <span className="route-option__extra">+{extra} min</span>}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {anyEnergy &&
         (carReady ? (
@@ -98,9 +123,9 @@ export function RoutePreview() {
           </button>
         ))}
 
-      <button className="btn btn--primary btn--block route-preview__go" onClick={() => goWithRoute()}>
+      <button className="btn btn--primary btn--block route-preview__go" disabled={!choosing} onClick={() => goWithRoute()}>
         <NavigationArrow size={20} aria-hidden />
-        Go{auto && <span className="route-preview__count"> · {secondsLeft}</span>}
+        Go{auto && choosing && <span className="route-preview__count"> · {secondsLeft}</span>}
       </button>
     </section>
   )

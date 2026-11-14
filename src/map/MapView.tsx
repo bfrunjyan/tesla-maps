@@ -13,6 +13,7 @@ import { isLite, useStore } from '../state/store'
 import type { Place, Position } from '../types'
 import { applyLook, buildStyle, ROUTE, setTrafficVisible, TRAFFIC, trafficTileUrl } from './style'
 import { sliceRoute } from '../nav/routeTraffic'
+import { stopLetter, stopsOf } from '../nav/stops'
 import { shownRoute } from '../nav/trafficSync'
 import { createNavZoom, followZoom } from './camera'
 import { setMap } from './mapApi'
@@ -25,6 +26,12 @@ const CAR_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="tr
 const PIN_SVG = `<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true">
   <path d="M16 1C8 1 2 7 2 15c0 10.5 14 25.5 14 25.5S30 25.5 30 15C30 7 24 1 16 1z" fill="#e5262f" stroke="#fff" stroke-width="2"/>
   <circle cx="16" cy="15" r="5" fill="#fff"/>
+</svg>`
+
+/** A stop of a trip with several: its letter on the pin. The destination is red, the stops before it dark. */
+const stopPinSvg = (letter: string, last: boolean) => `<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true">
+  <path d="M16 1C8 1 2 7 2 15c0 10.5 14 25.5 14 25.5S30 25.5 30 15C30 7 24 1 16 1z" fill="${last ? '#e5262f' : '#2f2e30'}" stroke="#fff" stroke-width="2"/>
+  <text x="16" y="20.5" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">${letter}</text>
 </svg>`
 
 /** Charger pin, drawn once per kind: a map pin with a lightning bolt (red = fast, white = standard; both read on the dark and light map). */
@@ -97,7 +104,7 @@ export function MapView() {
 
     /* ------------------------------------------------------ markers */
     const carMarker = new Marker({ element: el(CAR_SVG, 'car-marker'), rotationAlignment: 'map', pitchAlignment: 'map' })
-    let destMarker: Marker | null = null
+    let stopMarkers: Marker[] = []
     let pinMarker: Marker | null = null
 
     /* ------------------------------------------ smooth car movement */
@@ -502,10 +509,15 @@ export function MapView() {
         drawRoute()
       }
       if (s.routeTraffic !== prev.routeTraffic || s.nav !== prev.nav) drawRouteTraffic()
-      if (s.nav?.destination !== prev.nav?.destination) {
-        destMarker?.remove()
-        destMarker = null
-        if (s.nav) destMarker = new Marker({ element: el(PIN_SVG, 'dest-marker'), anchor: 'bottom' }).setLngLat([s.nav.destination.lon, s.nav.destination.lat]).addTo(map)
+      if (s.nav?.destination !== prev.nav?.destination || s.nav?.via !== prev.nav?.via) {
+        for (const m of stopMarkers) m.remove()
+        const stops = stopsOf(s.nav)
+        // One place: the plain pin. Several: lettered A, B, C in the order they'll be visited.
+        stopMarkers = stops.map((p, i) =>
+          new Marker({ element: el(stops.length > 1 ? stopPinSvg(stopLetter(i), i === stops.length - 1) : PIN_SVG, 'dest-marker'), anchor: 'bottom' })
+            .setLngLat([p.lon, p.lat])
+            .addTo(map),
+        )
       }
       if (s.selectedPlace !== prev.selectedPlace) {
         pinMarker?.remove()

@@ -1,13 +1,21 @@
-import { projectOnSegment, type LngLat } from '../lib/geo'
+import { bearing, distance, projectOnSegment, type LngLat } from '../lib/geo'
 import type { NavProgress, Route } from '../types'
+import { angleDiff } from './heading'
+
+/** Two stretches of the route this close to the car count as equally near. */
+const SAME_ROAD_M = 5
 
 /**
  * Snap a position to the route and work out what comes next.
  * Searches a window ahead of the last known segment so the car can't jump
  * back to an earlier part of a route that loops near itself, and (given the last
  * distance along and how far the car could have moved) not too far forward either.
+ *
+ * `course` is the direction the car is really moving, when known. It settles one case:
+ * a route that goes out along a street and back the same way (to a stop and on, or a
+ * U-turn). Both directions are equally near there; the car is on the one it is driving.
  */
-export function computeProgress(route: Route, pos: LngLat, lastSeg = 0, lastAlongM?: number, maxAheadM = Infinity): NavProgress {
+export function computeProgress(route: Route, pos: LngLat, lastSeg = 0, lastAlongM?: number, maxAheadM = Infinity, course: number | null = null): NavProgress {
   const { coords, cum, maneuvers } = route
   const from = Math.max(0, lastSeg - 3)
   const to = Math.min(coords.length - 1, lastSeg + 400)
@@ -21,6 +29,21 @@ export function computeProgress(route: Route, pos: LngLat, lastSeg = 0, lastAlon
     if (r.dist < best.dist) best = { seg: i, t: r.t, dist: r.dist, point: r.point }
   }
   if (coords.length === 1) best = { seg: 0, t: 0, dist: 0, point: coords[0] }
+
+  // Driving against the nearest stretch: if the route comes back along the same road
+  // just ahead, in the car's direction, that is where the car is.
+  const along = (i: number) => (distance(coords[i], coords[i + 1]) > 1 ? Math.abs(angleDiff(bearing(coords[i], coords[i + 1]), course!)) : null)
+  if (course != null && coords.length > 1 && (along(best.seg) ?? 0) > 120) {
+    for (let i = best.seg + 1; i < to; i++) {
+      if (cum[i] > reach) break
+      const r = projectOnSegment(pos, coords[i], coords[i + 1])
+      const angle = along(i)
+      if (r.dist <= best.dist + SAME_ROAD_M && angle != null && angle < 60) {
+        best = { seg: i, t: r.t, dist: r.dist, point: r.point }
+        break
+      }
+    }
+  }
 
   const segLen = (cum[best.seg + 1] ?? cum[best.seg]) - cum[best.seg]
   const alongM = cum[best.seg] + segLen * best.t

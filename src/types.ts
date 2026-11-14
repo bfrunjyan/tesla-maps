@@ -120,6 +120,18 @@ export interface Route {
   descentM?: number
   /** Estimated battery use (see nav/energy.ts). */
   kWh?: number
+  /**
+   * The places the route was planned through, in order (the last is the destination):
+   * where each one is along the route, and the maneuver that arrives at it.
+   */
+  stops?: RouteStop[]
+}
+
+export interface RouteStop {
+  lon: number
+  lat: number
+  atM: number
+  maneuverIndex: number
 }
 
 export interface NavProgress {

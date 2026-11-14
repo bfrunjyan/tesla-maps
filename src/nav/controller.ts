@@ -2,7 +2,7 @@ import { bearing, distance, type LngLat } from '../lib/geo'
 import { cancelSpeech, setVoiceEnabled, speak } from '../lib/voice'
 import { reverseGeocode } from '../services/search'
 import { fetchRoute, fetchRouteOptions } from '../services/routing'
-import { useStore } from '../state/store'
+import { samePlace, useStore, type NavState } from '../state/store'
 import type { NavProgress, Place, Position, Route } from '../types'
 import { vehicleSpec } from '../vehicle/catalog'
 import { whToPct } from './battery'
@@ -10,6 +10,7 @@ import { baseWhPerKm } from './energy'
 import { angleDiff, rawHeading, smoothHeading } from './heading'
 import { courseOf, createOffRouteDetector, maxAheadM } from './offRoute'
 import { computeProgress } from './progress'
+import { MAX_STOPS, moveItem, reachedVia, sameSpot, splitStops, stopsOf } from './stops'
 
 /** Republic Square, Yerevan: used until (or unless) the browser gives us a GPS fix. */
 export const FALLBACK_CENTER = { lon: 44.5126, lat: 40.1777 }
@@ -30,31 +31,42 @@ const get = () => useStore.getState()
 
 /* ---------------------------------------------------------------- routing */
 
-/** Picks a destination: fetch route choices and show the preview (fastest pre-selected). */
-export async function startNavigation(dest: Place) {
-  const s = get()
-  const from = s.position ?? { ...FALLBACK_CENTER, heading: null }
+const origin = () => get().position ?? { ...FALLBACK_CENTER, heading: null }
+
+/** The stops the route being driven was planned through: what the trip goes back to if a change can't be planned. */
+let plannedStops: Place[] = []
+
+/** Plans the trip for the preview: route choices through the stops in order (fastest pre-selected). */
+async function planPreview(stops: Place[], edited: boolean) {
   routeAbort?.abort()
-  routeAbort = new AbortController()
+  const abort = (routeAbort = new AbortController())
   window.clearTimeout(arrivedTimer)
-  s.addRecent(dest)
-  s.set({
-    nav: { destination: dest, route: null, progress: null, status: 'routing' },
-    panelOpen: false,
-    selectedPlace: null,
-    query: '',
-    follow: false,
-    turnListOpen: false,
-  })
+  const trip = { ...splitStops(stops), edited, route: null, progress: null }
+  get().set({ nav: { ...trip, status: 'routing' } })
   try {
-    const options = await fetchRouteOptions(from, dest, s.lang, routeAbort.signal)
+    const options = await fetchRouteOptions(origin(), stops, get().lang, abort.signal)
+    if (routeAbort !== abort || abort.signal.aborted) return
     if (!options.length) throw new Error('No route found')
-    get().set({ nav: { destination: dest, route: null, progress: null, status: 'choosing', options, selected: 0 } })
+    get().set({ nav: { ...trip, status: 'choosing', options, selected: 0 } })
   } catch (err) {
-    if (routeAbort.signal.aborted) return
+    if (routeAbort !== abort || abort.signal.aborted) return
     const msg = err instanceof Error ? err.message : 'Routing failed'
-    get().set({ nav: { destination: dest, route: null, progress: null, status: 'error', error: msg } })
+    get().set({ nav: { ...trip, status: 'error', error: msg } })
   }
+}
+
+/** Picks a destination: fetch route choices and show the preview. */
+export function startNavigation(dest: Place) {
+  const s = get()
+  s.addRecent(dest)
+  s.set({ panelOpen: false, searchMode: 'navigate', selectedPlace: null, query: '', follow: false, turnListOpen: false, tripOpen: false })
+  return planPreview([dest], false)
+}
+
+/** Plans the same trip again (after "No route" or a failed connection). */
+export function retryRoute() {
+  const nav = get().nav
+  if (nav) planPreview(stopsOf(nav), !!nav.edited)
 }
 
 /** Highlights a route in the preview. */
@@ -69,14 +81,15 @@ export function goWithRoute(index?: number) {
   const option = nav?.options?.[index ?? nav.selected ?? 0]
   if (!nav || !option) return
   const s = get()
-  const from = s.position ?? { ...FALLBACK_CENTER, heading: null }
+  const from = origin()
   spoken = new Set()
   offRoute.reset()
   lastRerouteAt = 0
   rerouteFailed = false
+  plannedStops = stopsOf(nav)
   const route = option.route
   const progress = computeProgress(route, [from.lon, from.lat])
-  s.set({ nav: { destination: nav.destination, route, progress, status: 'active' }, follow: true })
+  s.set({ nav: { destination: nav.destination, via: nav.via, route, progress, status: 'active' }, follow: true, tripOpen: false })
   speak(route.maneuvers[0]?.verbalPre, route.lang)
   spoken.add('0:pre')
 }
@@ -85,35 +98,76 @@ export function endNavigation() {
   routeAbort?.abort()
   window.clearTimeout(arrivedTimer)
   cancelSpeech()
-  get().set({ nav: null, turnListOpen: false })
+  get().set({ nav: null, turnListOpen: false, tripOpen: false })
+}
+
+/* ------------------------------------------------------------------ stops */
+
+/** The trip's stops changed: plan it again, in the preview or from where the car is. */
+function changeTrip(stops: Place[]) {
+  const nav = get().nav
+  if (!nav) return
+  if (!stops.length) return endNavigation()
+  if (nav.route && (nav.status === 'active' || nav.status === 'rerouting')) {
+    const pos = get().position
+    get().set({ nav: { ...nav, ...splitStops(stops), status: 'rerouting' } })
+    // A parked car's last heading says nothing about which way it will set off.
+    planDrive({ ...origin(), heading: pos && pos.speed > 2 ? pos.heading : null }, true)
+    return
+  }
+  planPreview(stops, true)
+}
+
+/** Adds a place to the end of the trip: it becomes the destination, after the stops already there. */
+export function addStop(place: Place) {
+  const s = get()
+  if (!s.nav) return startNavigation(place)
+  const stops = stopsOf(s.nav)
+  s.set({ panelOpen: false, searchMode: 'navigate', query: '' })
+  if (stops.some((p) => samePlace(p, place))) return s.showToast('That place is already in the trip')
+  if (stops.length >= MAX_STOPS) return s.showToast(`A trip can have up to ${MAX_STOPS} stops`)
+  s.addRecent(place)
+  changeTrip([...stops, place])
+}
+
+/** Takes a stop out of the trip. Removing the only one ends the trip. */
+export function removeStop(index: number) {
+  const stops = stopsOf(get().nav)
+  if (stops[index]) changeTrip(stops.filter((_, i) => i !== index))
+}
+
+/** Moves a stop to another place in the order. */
+export function moveStop(from: number, to: number) {
+  const stops = stopsOf(get().nav)
+  const next = moveItem(stops, from, to)
+  if (next !== stops) changeTrip(next)
 }
 
 /**
- * The driver left the route: plan a new one from where the car is, heading the way it
- * is actually moving, to the same destination. Guidance carries on with the old route
- * until the new one arrives.
+ * Plans a new route while driving, from where the car is through the stops still to
+ * visit. Guidance carries on with the old route until the new one arrives. `changed`
+ * means the driver edited the stops: if that can't be planned, the trip goes back to
+ * what it was; otherwise (the car left the route) the detector simply tries again.
  */
-async function reroute(pos: Position, course: number | null) {
-  const nav = get().nav
-  if (!nav || nav.status === 'rerouting') return
+async function planDrive(from: { lon: number; lat: number; heading: number | null }, changed: boolean) {
   lastRerouteAt = Date.now()
   offRoute.reset()
-  get().set({ nav: { ...nav, status: 'rerouting' } })
   routeAbort?.abort()
   const abort = new AbortController()
   routeAbort = abort
   // Never wait forever on a slow connection: a hung request would block every later recalculation.
   const timer = window.setTimeout(() => abort.abort(), REROUTE_TIMEOUT_MS)
   try {
+    const nav = get().nav!
     // Keep the driver's choice (fastest or shortest) when recalculating.
-    const from = { lon: pos.lon, lat: pos.lat, heading: course ?? pos.heading }
-    const route = await fetchRoute(from, nav.destination, get().lang, abort.signal, nav.route?.preference ?? 'fastest')
+    const route = await fetchRoute(from, stopsOf(nav), get().lang, abort.signal, nav.route?.preference ?? 'fastest')
     const cur = get().nav
     if (!cur || routeAbort !== abort) return
     spoken = new Set()
     rerouteFailed = false
+    plannedStops = stopsOf(cur)
     // Match the car where it is now: it kept moving while the route was being planned.
-    const now = get().position ?? pos
+    const now = get().position ?? from
     const progress = computeProgress(route, [now.lon, now.lat])
     get().set({ nav: { ...cur, route, progress, status: 'active' } })
     speak(route.maneuvers[0]?.verbalPre, route.lang)
@@ -121,13 +175,30 @@ async function reroute(pos: Position, course: number | null) {
   } catch {
     if (routeAbort !== abort) return // ended, or replaced by a newer request
     const cur = get().nav
-    if (cur?.status === 'rerouting') get().set({ nav: { ...cur, status: 'active' } })
+    if (!cur) return
+    if (changed) {
+      if (plannedStops.length) get().set({ nav: { ...cur, ...splitStops(plannedStops), status: 'active' } })
+      get().showToast('Couldn’t change the trip. Check the connection.')
+      return
+    }
+    if (cur.status === 'rerouting') get().set({ nav: { ...cur, status: 'active' } })
     // Still off the route: the detector fires again after the cooldown. Say so once.
-    if (cur && !rerouteFailed) get().showToast('Couldn’t update the route. Trying again.')
+    if (!rerouteFailed) get().showToast('Couldn’t update the route. Trying again.')
     rerouteFailed = true
   } finally {
     window.clearTimeout(timer)
   }
+}
+
+/**
+ * The driver left the route: plan a new one from where the car is, heading the way it
+ * is actually moving, through the stops still to visit.
+ */
+function reroute(pos: Position, course: number | null) {
+  const nav = get().nav
+  if (!nav || nav.status === 'rerouting') return
+  get().set({ nav: { ...nav, status: 'rerouting' } })
+  return planDrive({ lon: pos.lon, lat: pos.lat, heading: course ?? pos.heading }, false)
 }
 
 /* --------------------------------------------------------------- position */
@@ -183,7 +254,7 @@ export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
   // Match to the route: on route, the road's direction is the steadiest heading.
   const last = nav?.progress
   const progress = route
-    ? computeProgress(route, here, last?.segIndex ?? 0, last?.alongM, maxAheadM(fix.speed, prev ? fix.ts - prev.ts : 1000, fix.accuracy))
+    ? computeProgress(route, here, last?.segIndex ?? 0, last?.alongM, maxAheadM(fix.speed, prev ? fix.ts - prev.ts : 1000, fix.accuracy), course)
     : null
   /** Direction of the route where the car is matched. */
   let segBearing: number | null = null
@@ -213,9 +284,12 @@ export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
   updateAreaLabel(pos)
 
   if (!route || !progress || !nav) return
+  const trip = passStops(nav, route, progress.alongM)
 
-  if (progress.remainingM < ARRIVE_M) {
-    s.set({ nav: { ...nav, progress, status: 'arrived' } })
+  // The end of the route is the destination only once every stop on the way is behind
+  // the car (a trip that was just changed still shows the route it had before).
+  if (progress.remainingM < ARRIVE_M && !trip.via?.length) {
+    s.set({ nav: { ...trip, progress, status: 'arrived' } })
     speak(route.maneuvers[route.maneuvers.length - 1]?.verbalPre ?? 'You have arrived', route.lang)
     arrivedTimer = window.setTimeout(() => {
       if (get().nav?.status === 'arrived') endNavigation()
@@ -224,17 +298,28 @@ export function onPosition(fix: Position, source: 'gps' | 'fallback' | 'sim') {
   }
 
   // Left the route (turned off it, drifted far from it, or driving it backwards)?
-  if (source !== 'fallback' && nav.status !== 'rerouting') {
+  if (source !== 'fallback' && trip.status !== 'rerouting') {
     const reason = offRoute.check({ ts: fix.ts, offRouteM: progress.offRouteM, accuracy: fix.accuracy, speed: fix.speed, course, routeBearing: segBearing })
     if (reason && Date.now() - lastRerouteAt > REROUTE_COOLDOWN_MS) {
-      s.set({ nav: { ...nav, progress } })
+      s.set({ nav: { ...trip, progress } })
       reroute(pos, course)
       return
     }
   }
 
-  s.set({ nav: { ...nav, progress } })
+  s.set({ nav: { ...trip, progress } })
   announce(progress.nextIndex, progress.toNextM, pos.speed)
+}
+
+/** Stops on the way that the car has now reached come off the trip; the rest carry on. */
+function passStops(nav: NavState, route: Route, alongM: number): NavState {
+  let via = nav.via ?? []
+  while (via.length && reachedVia(route, via[0], alongM)) {
+    const reached = via[0]
+    plannedStops = plannedStops.filter((p) => !sameSpot(p, reached))
+    via = via.slice(1)
+  }
+  return via.length === (nav.via?.length ?? 0) ? nav : { ...nav, via }
 }
 
 function announce(index: number, toNextM: number, speed: number) {

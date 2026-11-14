@@ -127,6 +127,26 @@ data, `src/nav/energy.ts`), tagged Fastest / Shortest / Economy. Fastest is pre-
 starts after 10 s unless the driver touches the screen. Rerouting keeps the chosen
 preference (fastest or shortest). Travel times don't include live traffic.
 
+## Trips with several stops
+
+A trip can go through up to 8 places in order: A, B, C… **Add stop** (in the route preview,
+or under the stops button on the directions card while driving) opens the search; the place
+picked is added after the ones already in the trip. In the stops list, drag a stop by its
+handle to another place in the order (or focus the handle and use the up and down arrow
+keys), and tap × to take it out. Every change plans the route again: in the preview as new
+route choices, on the road from where the car is, with guidance carrying on meanwhile. If a
+change can't be planned while driving, the trip goes back to what it was.
+
+A stop is ticked off when the car gets within 30 m of it along the route (driving past
+counts), and the trip carries on to the next one; only the last stop is "arrived". Leaving
+the route plans a new one through every stop still to make. The routing server returns one
+leg per stop; `tripToRoute` in `src/services/routing.ts` joins them into one line and one
+list of maneuvers and names each stop in the instructions. Where a stop makes the route go
+out along a street and back the same way, the car is matched to the direction it is driving
+(`computeProgress` in `src/nav/progress.ts`). Through several stops the server offers no
+alternative routes, so the choices are fastest and shortest. Trip logic: `src/nav/stops.ts`
+and `src/nav/controller.ts`; the list: `src/components/StopsList.tsx`.
+
 ## Leaving the route
 
 When the driver takes another way, Mapic plans a new route to the same destination from

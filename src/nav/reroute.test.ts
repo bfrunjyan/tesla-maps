@@ -92,7 +92,7 @@ describe('turning onto another street', () => {
     await driveWest(4)
     expect(fetchRouteMock).toHaveBeenCalledTimes(1)
     const [from, to, , , preference] = fetchRouteMock.mock.calls[0]
-    expect(to).toBe(destination)
+    expect(to).toEqual([destination])
     expect(preference).toBe('fastest')
     // From where the car is, in the direction it is really driving (west), not the old route's.
     expect(from.heading).toBeCloseTo(270, 0)

@@ -5,7 +5,7 @@
 import { decodePolyline6, distance, type LngLat } from '../lib/geo'
 import { climbStats, estimateKWh } from '../nav/energy'
 import { buildOptions, type RouteOption } from '../nav/routeOptions'
-import type { Maneuver, Route } from '../types'
+import type { Maneuver, Route, RouteStop } from '../types'
 
 const VALHALLA = 'https://valhalla1.openstreetmap.de/route'
 
@@ -24,34 +24,66 @@ interface ValhallaManeuver {
 
 export type RoutePreference = 'fastest' | 'shortest'
 
-interface ValhallaTrip {
+export interface ValhallaTrip {
   legs: { shape: string; maneuvers: ValhallaManeuver[] }[]
   summary: { time: number; length: number }
 }
 
-function tripToRoute(trip: ValhallaTrip, lang: string, preference: RoutePreference): Route {
-  const leg = trip.legs[0]
-  const coords: LngLat[] = decodePolyline6(leg.shape)
-  const cum: number[] = [0]
-  for (let i = 1; i < coords.length; i++) cum.push(cum[i - 1] + distance(coords[i - 1], coords[i]))
-  const maneuvers: Maneuver[] = leg.maneuvers.map((m) => ({
-    type: m.type,
-    instruction: m.instruction,
-    verbalAlert: m.verbal_transition_alert_instruction,
-    verbalPre: m.verbal_pre_transition_instruction,
-    verbalPost: m.verbal_post_transition_instruction,
-    street: (m.street_names ?? m.begin_street_names ?? [])[0] ?? '',
-    shapeIndex: m.begin_shape_index,
-    atM: cum[Math.min(m.begin_shape_index, cum.length - 1)],
-    lengthM: m.length * 1000,
-    timeS: m.time,
-  }))
-  return { coords, cum, maneuvers, totalM: cum[cum.length - 1], totalS: trip.summary.time, lang, preference }
+/** A place to route to. The name is used to say which stop is coming up. */
+export type RouteTarget = { lon: number; lat: number; name?: string }
+
+/** What the card and the voice say at a stop on the way (the server only knows "your destination"). */
+function stopWording(name: string, lang: string) {
+  return lang.startsWith('ru')
+    ? { instruction: `Остановка: ${name}`, alert: `Впереди остановка: ${name}.`, pre: `Вы прибыли: ${name}.` }
+    : { instruction: `Arrive at ${name}`, alert: `Your stop, ${name}, is ahead.`, pre: `You have arrived at ${name}.` }
+}
+
+/**
+ * One route out of the server's answer. A trip through several stops comes back as
+ * one leg per stop; they are joined into a single line and a single list of maneuvers,
+ * with each stop's place on it noted in `stops`.
+ */
+export function tripToRoute(trip: ValhallaTrip, lang: string, preference: RoutePreference, targets: RouteTarget[] = []): Route {
+  const coords: LngLat[] = []
+  const cum: number[] = []
+  const maneuvers: Maneuver[] = []
+  const stops: RouteStop[] = []
+  trip.legs.forEach((leg, legIndex) => {
+    const shape = decodePolyline6(leg.shape)
+    // A leg starts on the point the one before it ended on: keep that point once.
+    const offset = coords.length ? coords.length - 1 : 0
+    for (const c of coords.length ? shape.slice(1) : shape) {
+      cum.push(coords.length ? cum[cum.length - 1] + distance(coords[coords.length - 1], c) : 0)
+      coords.push(c)
+    }
+    const lastLeg = legIndex === trip.legs.length - 1
+    const target = targets[legIndex]
+    leg.maneuvers.forEach((m, i) => {
+      const shapeIndex = Math.min(offset + m.begin_shape_index, coords.length - 1)
+      const arrival = i === leg.maneuvers.length - 1
+      const wording = arrival && !lastLeg && target?.name ? stopWording(target.name, lang) : null
+      maneuvers.push({
+        type: m.type,
+        instruction: wording?.instruction ?? m.instruction,
+        verbalAlert: wording?.alert ?? m.verbal_transition_alert_instruction,
+        verbalPre: wording?.pre ?? m.verbal_pre_transition_instruction,
+        verbalPost: m.verbal_post_transition_instruction,
+        street: (m.street_names ?? m.begin_street_names ?? [])[0] ?? '',
+        shapeIndex,
+        atM: cum[shapeIndex],
+        lengthM: m.length * 1000,
+        timeS: m.time,
+      })
+    })
+    if (target) stops.push({ lon: target.lon, lat: target.lat, atM: cum[cum.length - 1], maneuverIndex: maneuvers.length - 1 })
+  })
+  return { coords, cum, maneuvers, totalM: cum[cum.length - 1] ?? 0, totalS: trip.summary.time, lang, preference, ...(stops.length ? { stops } : {}) }
 }
 
 type From = { lon: number; lat: number; heading?: number | null }
 
-async function valhalla(from: From, to: { lon: number; lat: number }, lang: string, extra: Record<string, unknown>, signal?: AbortSignal) {
+async function valhalla(from: From, to: RouteTarget[], lang: string, extra: Record<string, unknown>, signal?: AbortSignal) {
   const start: Record<string, number> = { lat: from.lat, lon: from.lon }
   if (from.heading != null) {
     start.heading = Math.round(from.heading)
@@ -61,7 +93,8 @@ async function valhalla(from: From, to: { lon: number; lat: number }, lang: stri
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      locations: [start, { lat: to.lat, lon: to.lon }],
+      // Each place after the start is a stop: the route arrives there before going on.
+      locations: [start, ...to.map((t) => ({ lat: t.lat, lon: t.lon }))],
       costing: 'auto',
       directions_options: { units: 'kilometers', language: lang },
       ...extra,
@@ -77,10 +110,10 @@ async function valhalla(from: From, to: { lon: number; lat: number }, lang: stri
 
 const shortestOptions = { costing_options: { auto: { shortest: true } } }
 
-/** One route (used for rerouting): keeps the driver's fastest/shortest choice. */
-export async function fetchRoute(from: From, to: { lon: number; lat: number }, lang: string, signal?: AbortSignal, preference: RoutePreference = 'fastest'): Promise<Route> {
+/** One route through the stops in order (used for rerouting): keeps the driver's fastest/shortest choice. */
+export async function fetchRoute(from: From, to: RouteTarget[], lang: string, signal?: AbortSignal, preference: RoutePreference = 'fastest'): Promise<Route> {
   const data = await valhalla(from, to, lang, preference === 'shortest' ? shortestOptions : {}, signal)
-  return tripToRoute(data.trip, lang, preference)
+  return tripToRoute(data.trip, lang, preference, to)
 }
 
 /** Climb and descent along a route, from the routing server's elevation data. */
@@ -105,19 +138,20 @@ async function addEnergy(route: Route, signal?: AbortSignal): Promise<Route> {
 /**
  * Route choices for the preview: the fastest route, up to two alternatives and the
  * shortest route, each with an energy estimate, labelled Fastest/Shortest/Economy.
+ * Through several stops the server offers no alternatives, so it is fastest and shortest.
  */
-export async function fetchRouteOptions(from: From, to: { lon: number; lat: number }, lang: string, signal?: AbortSignal): Promise<RouteOption[]> {
+export async function fetchRouteOptions(from: From, to: RouteTarget[], lang: string, signal?: AbortSignal): Promise<RouteOption[]> {
   const [fast, short] = await Promise.allSettled([
-    valhalla(from, to, lang, { alternates: 2 }, signal),
+    valhalla(from, to, lang, to.length === 1 ? { alternates: 2 } : {}, signal),
     valhalla(from, to, lang, shortestOptions, signal),
   ])
   if (fast.status === 'rejected' && short.status === 'rejected') throw fast.reason
   const candidates: Route[] = []
   if (fast.status === 'fulfilled') {
-    candidates.push(tripToRoute(fast.value.trip, lang, 'fastest'))
-    for (const alt of fast.value.alternates ?? []) candidates.push(tripToRoute(alt.trip, lang, 'fastest'))
+    candidates.push(tripToRoute(fast.value.trip, lang, 'fastest', to))
+    for (const alt of fast.value.alternates ?? []) candidates.push(tripToRoute(alt.trip, lang, 'fastest', to))
   }
-  if (short.status === 'fulfilled') candidates.push(tripToRoute(short.value.trip, lang, 'shortest'))
+  if (short.status === 'fulfilled') candidates.push(tripToRoute(short.value.trip, lang, 'shortest', to))
   // Energy is a bonus: if elevation fails, options still show without Economy.
   const withEnergy = await Promise.all(candidates.map((r) => addEnergy(r, signal).catch(() => r)))
   return buildOptions(withEnergy)

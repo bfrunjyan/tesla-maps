@@ -45,6 +45,8 @@ function MapApp() {
   const accountOpen = useStore((s) => s.accountOpen)
   const carSheetOpen = useStore((s) => s.carSheetOpen)
   const chargerBar = useStore((s) => s.showChargers && !s.nav)
+  // Adding a stop to a trip: the search takes the place of the trip card until a place is picked.
+  const addingStop = useStore((s) => s.panelOpen && s.searchMode === 'add-stop')
 
   useEffect(() => {
     initLocation()
@@ -56,7 +58,7 @@ function MapApp() {
       <MapView />
       <div className="scrim" data-visible={panelOpen} onClick={closePanel} aria-hidden />
       <div className="left-column">
-        {nav ? <GuidanceCard /> : <SearchBox />}
+        {nav && !addingStop ? <GuidanceCard /> : <SearchBox />}
         {!nav && !panelOpen && selectedPlace && <PlaceCard />}
       </div>
       <MapControls />

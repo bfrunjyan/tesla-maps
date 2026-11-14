@@ -354,6 +354,14 @@ h2, p { margin: 0; }
 
 /* Trip summary: arrival time, time and distance left, charge at arrival on one line
    (wrapping whole items, never inside one), then the destination and the trip buttons. */
+.guide__stops { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px; border-top: 1px solid var(--divider); }
+.guide__via { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; padding-right: 10px; font-size: 13px; }
+.guide__via .stop__letter { width: 20px; height: 20px; font-size: 11px; }
+.guide__via-name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guide__via-meta { flex: none; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.guide__stops-btn { position: relative; }
+.guide__stops-btn[aria-expanded='true'] { background: var(--active-bg); }
+.guide__stops-count { position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
 .guide__foot { display: flex; flex-direction: column; padding: 10px 4px 4px 14px; }
 .guide__trip { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 2px; padding-right: 10px; }
 .guide__eta { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -363,11 +371,6 @@ h2, p { margin: 0; }
 .guide__bar .guide__dest { flex: 1; margin-top: 0; }
 .guide__dest { display: flex; align-items: center; gap: 2px; min-width: 0; margin-top: 2px; }
 .guide__dest-name { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.guide > .guide__dest { padding: 14px 10px 0 18px; }
-.guide__state { padding: 14px 18px 18px; }
-.guide__state-text { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 15px; line-height: 1.4; }
-.guide__state-actions { display: flex; gap: 8px; margin-top: 14px; }
-.guide__state-actions .btn { flex: 1; }
 
 /* ------------------------------------------------------ map controls */
 .controls {
@@ -792,7 +795,33 @@ h2, p { margin: 0; }
 .place-card__titles .rename { margin-top: 6px; }
 
 /* ------------------------------------------------------- route preview */
-.route-preview { padding: 6px 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.route-preview { padding: 6px 12px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.route-preview > * { flex: none; }
+.route-preview__state { display: flex; align-items: center; gap: 10px; margin: 0; padding: 6px; color: var(--text-muted); font-size: 14px; line-height: 1.4; }
+.route-preview__error { display: flex; flex-direction: column; gap: 8px; }
+.route-preview .stops { margin: -4px -6px 0; }
+
+/* The trip's stops: A, B, C… with a handle to drag each one to another place in the order. */
+.stops { display: flex; flex-direction: column; }
+.stops__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.stop { position: relative; display: flex; align-items: center; gap: 8px; height: 46px; padding-left: 10px; border-radius: var(--radius-sm); }
+.stop:has(.stop__handle) { padding-left: 0; }
+/* While one stop is dragged the others slide aside; when it is let go they are already in place. */
+.stops__list[data-dragging='true'] .stop { transition: transform 180ms var(--ease-out); }
+.stops__list[data-dragging='true'] .stop[data-dragged='true'] { transition: none; z-index: 1; background: var(--surface-raised); box-shadow: var(--shadow); }
+.stop__handle { flex: none; display: grid; place-items: center; width: 40px; height: 46px; border-radius: var(--radius-sm); color: var(--text-faint); cursor: grab; touch-action: none; }
+.stop[data-dragged='true'] .stop__handle { cursor: grabbing; color: var(--text); }
+.stop__letter { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--surface-raised); font-size: 12px; font-weight: 700; line-height: 1; }
+.stop__letter[data-last='true'] { background: var(--danger); color: #fff; }
+.stop__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.stop__name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stop__meta { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stop__remove { color: var(--text-muted); }
+.stops__add { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: var(--radius-sm); color: var(--accent); font-size: 14px; font-weight: 600; transition: background-color 140ms ease, transform 140ms var(--ease-out); }
+.stops__add:active { transform: scale(0.97); background: var(--surface-press); }
+:root[data-theme='dark'] .stops__add { color: #8fb0ff; }
+.stops__full { margin: 0; padding: 8px 12px; font-size: 12px; color: var(--text-faint); }
+.route-preview > .stops__add { margin: -6px 0 -4px -6px; }
 .route-preview__head { display: flex; align-items: flex-start; gap: 4px; padding-left: 6px; }
 .route-preview__titles { flex: 1; min-width: 0; padding-top: 10px; }
 .route-preview__label { font-size: 12px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }

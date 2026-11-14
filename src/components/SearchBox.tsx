@@ -5,7 +5,7 @@ import { Bank, Briefcase, CircleNotch, ClockCounterClockwise, ForkKnife, House, 
 import { chargerToPlace, isFast, nearestChargers } from '../lib/chargers'
 import { distance, formatDistance } from '../lib/geo'
 import { useLongPress } from '../lib/useLongPress'
-import { FALLBACK_CENTER, startNavigation } from '../nav/controller'
+import { addStop, FALLBACK_CENTER, startNavigation } from '../nav/controller'
 import { categorySearch, searchPlaces, type CategoryKind } from '../services/search'
 import { useStore, type SearchTab } from '../state/store'
 import type { Place } from '../types'
@@ -36,6 +36,8 @@ function choosePlace(place: Place) {
     s.setWork(place)
     s.closePanel()
     s.showToast('Work saved')
+  } else if (s.searchMode === 'add-stop') {
+    addStop(place)
   } else {
     startNavigation(place)
   }
@@ -68,7 +70,7 @@ export function SearchBox() {
   }, [panelOpen])
 
   const placeholder =
-    searchMode === 'set-home' ? 'Set Home address' : searchMode === 'set-work' ? 'Set Work address' : 'Navigate'
+    searchMode === 'set-home' ? 'Set Home address' : searchMode === 'set-work' ? 'Set Work address' : searchMode === 'add-stop' ? 'Add a stop' : 'Navigate'
 
   return (
     <div className="search" data-open={panelOpen}>
@@ -140,6 +142,22 @@ function SearchPanel() {
             <span>Work</span>
             {!workPlace && <span className="shortcut__hint">Set</span>}
           </button>
+        </div>
+      )}
+      {searchMode === 'add-stop' && (homePlace || workPlace) && (
+        <div className="panel__shortcuts">
+          {homePlace && (
+            <button className="shortcut" onClick={() => choosePlace(homePlace)}>
+              <House size={20} aria-hidden />
+              <span>Home</span>
+            </button>
+          )}
+          {workPlace && (
+            <button className="shortcut" onClick={() => choosePlace(workPlace)}>
+              <Briefcase size={20} aria-hidden />
+              <span>Work</span>
+            </button>
+          )}
         </div>
       )}
       {searchMode === 'navigate' && !user && authReady && !query && (
