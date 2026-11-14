@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { ChargerBar } from './components/ChargerBar'
+import { CommuteCard } from './components/CommuteCard'
 import { GuidanceCard } from './components/GuidanceCard'
 import { LocationSheet } from './components/Location'
 import { SpeedSign } from './components/SpeedSign'
@@ -83,6 +84,7 @@ function MapApp() {
       <div className="left-column">
         {nav && !addingStop ? <GuidanceCard /> : <SearchBox />}
         {!nav && !panelOpen && selectedPlace && <PlaceCard />}
+        {!nav && !panelOpen && !selectedPlace && <CommuteCard />}
       </div>
       <MapControls />
       {areaLabel && <div className="area-label">{areaLabel}</div>}

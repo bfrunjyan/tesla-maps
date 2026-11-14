@@ -165,6 +165,14 @@ route whatever its direction (35 m plus GPS allowance), or driving the route bac
 Guidance continues on the old route until the new one arrives. A request that takes over
 12 s is dropped and tried again; at most one new route every 8 s.
 
+## Commute card
+
+Opened at Home with Work saved (or at Work with Home saved), within 400 m, Mapic shows "To
+Work · 24 min, Arrive 08:51" under the search bar; one tap plans the trip
+(`src/nav/commute.ts`, `src/components/CommuteCard.tsx`). The time is in live traffic on the
+Google map (one Routes request), without traffic on the standard map. It needs a real GPS
+fix, is asked for once per arrival, and ✕ hides it until the car has been somewhere else.
+
 ## Arrive by
 
 With the Google map, the route choices offer "Arrive by…": pick an arrival time in quarter
