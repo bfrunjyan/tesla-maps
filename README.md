@@ -165,6 +165,14 @@ route whatever its direction (35 m plus GPS allowance), or driving the route bac
 Guidance continues on the old route until the new one arrives. A request that takes over
 12 s is dropped and tried again; at most one new route every 8 s.
 
+## Arrive by
+
+With the Google map, the route choices offer "Arrive by…": pick an arrival time in quarter
+hours and Mapic says when to leave ("Leave by 17:41 · 33 min drive"), or how late leaving
+now would be (`src/nav/leaveBy.ts`, `src/components/LeaveBy.tsx`). Google forecasts the
+driving time for a departure, not an arrival, so Mapic works back from the arrival time in
+two forecasts (each a billed Routes API request, asked once the driver stops tapping).
+
 ## Speed limit
 
 During guidance, a speed-limit sign shows bottom left with the car's speed beside it, red

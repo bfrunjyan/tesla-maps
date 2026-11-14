@@ -8,6 +8,8 @@ import type { Place, Route } from '../types'
 import { vehicleSpec } from '../vehicle/catalog'
 import { useArrival } from '../vehicle/useArrival'
 import { BatteryIcon } from './BatteryIcon'
+import { usingGoogle } from '../services/googleMaps'
+import { LeaveBy } from './LeaveBy'
 import { AddStopButton, StopsList } from './StopsList'
 
 const AUTO_START_S = 10
@@ -46,6 +48,7 @@ export function RoutePreview() {
   const vehicle = useStore((s) => s.vehicle)
   const battery = useStore((s) => s.battery)
   const favorites = useStore((s) => s.favorites)
+  const google = useStore((s) => usingGoogle(s))
   if (!nav) return null
   const stops = stopsOf(nav)
   const options = choosing ? nav.options ?? [] : []
@@ -131,6 +134,9 @@ export function RoutePreview() {
           </button>
         ))}
 
+      {/* When to leave for an arrival time: needs Google's traffic forecast. */}
+      {choosing && google && options[selected] && <LeaveBy travelS={options[selected].route.totalS} />}
+
       <button className="btn btn--primary btn--block route-preview__go" disabled={!choosing} onClick={() => goWithRoute()}>
         <NavigationArrow size={20} aria-hidden />
         Go{auto && choosing && <span className="route-preview__count"> · {secondsLeft}</span>}
@@ -157,9 +163,14 @@ function ArrivalMeta({ route }: { route: Route }) {
 /** Saves the destination as a favorite, or removes it, right from the route choices. */
 function FavoriteButton({ place, favorite }: { place: Place; favorite: boolean }) {
   return (
-    <button className="stops__add route-preview__fav" aria-pressed={favorite} onClick={() => useStore.getState().toggleFavorite(place)}>
+    <button
+      className="stops__add route-preview__fav"
+      aria-pressed={favorite}
+      aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+      onClick={() => useStore.getState().toggleFavorite(place)}
+    >
       <Star size={18} weight={favorite ? 'fill' : 'bold'} className={favorite ? 'is-fav' : undefined} aria-hidden />
-      {favorite ? 'Favorite' : 'Add to favorites'}
+      Favorite
     </button>
   )
 }

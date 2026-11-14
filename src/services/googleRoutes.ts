@@ -184,3 +184,35 @@ export async function googleRoutes(
   if (!data?.routes?.length) throw new Error('No route found')
   return data.routes.map((r) => googleRouteToRoute(r, lang, targets))
 }
+
+/**
+ * Google's predicted driving time (seconds) through the targets, leaving at `departAt`:
+ * live traffic for now, Google's traffic forecast for later. One billed request.
+ */
+export async function googleTravelSeconds(
+  from: { lon: number; lat: number },
+  targets: Target[],
+  departAt: Date,
+  signal?: AbortSignal,
+): Promise<number> {
+  const point = (p: { lon: number; lat: number }) => ({ location: { latLng: { latitude: p.lat, longitude: p.lon } } })
+  // Google refuses a departure in the past; "now" plus a little stays valid in flight.
+  const depart = new Date(Math.max(departAt.getTime(), Date.now() + 60_000))
+  const res = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': googleKey() ?? '', 'X-Goog-FieldMask': 'routes.duration' },
+    body: JSON.stringify({
+      origin: point(from),
+      destination: point(targets[targets.length - 1]),
+      intermediates: targets.slice(0, -1).map(point),
+      travelMode: 'DRIVE',
+      routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
+      departureTime: depart.toISOString(),
+    }),
+    signal,
+  })
+  const data = (await res.json().catch(() => null)) as { routes?: { duration?: string }[]; error?: { message?: string } } | null
+  const s = seconds(data?.routes?.[0]?.duration)
+  if (!res.ok || !s) throw new Error(data?.error?.message ?? `Travel time failed (${res.status})`)
+  return s
+}

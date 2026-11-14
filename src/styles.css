@@ -1134,6 +1134,16 @@ h2, p { margin: 0; }
 /* Add stop and Favorite side by side under the destination. */
 .route-preview__actions { display: flex; flex-wrap: wrap; gap: 2px; margin: -6px 0 -4px -6px; }
 .route-preview .route-preview__fav[aria-pressed='true'] { color: var(--text); }
+/* Arrive by → leave by (Google map only). */
+.leave-by__open { margin: -4px 0 -2px -6px; }
+.leave-by { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--surface-raised); }
+.leave-by__picker { display: flex; align-items: center; gap: 2px; }
+.leave-by__label { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.leave-by__step { width: 40px; height: 40px; }
+.leave-by__time { min-width: 5ch; text-align: center; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.leave-by__result { margin: 0; font-size: 13px; line-height: 1.4; color: var(--text-muted); }
+.leave-by__result strong { color: var(--text); }
+.leave-by__result[data-state='loading'] { opacity: 0.7; }
 .route-preview__head { display: flex; align-items: flex-start; gap: 4px; padding-left: 6px; }
 .route-preview__titles { flex: 1; min-width: 0; padding-top: 10px; }
 .route-preview__label { font-size: 12px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
