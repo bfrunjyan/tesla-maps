@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { ArrowClockwise, Car, CircleNotch, NavigationArrow, X } from '@phosphor-icons/react'
+import { ArrowClockwise, Car, CircleNotch, NavigationArrow, Star, X } from '@phosphor-icons/react'
 import { formatDistance, formatDuration } from '../lib/geo'
 import { endNavigation, goWithRoute, retryRoute, selectRoute } from '../nav/controller'
 import { stopsOf } from '../nav/stops'
-import { useStore } from '../state/store'
-import type { Route } from '../types'
+import { samePlace, useStore } from '../state/store'
+import type { Place, Route } from '../types'
 import { vehicleSpec } from '../vehicle/catalog'
 import { useArrival } from '../vehicle/useArrival'
 import { BatteryIcon } from './BatteryIcon'
@@ -45,6 +45,7 @@ export function RoutePreview() {
 
   const vehicle = useStore((s) => s.vehicle)
   const battery = useStore((s) => s.battery)
+  const favorites = useStore((s) => s.favorites)
   if (!nav) return null
   const stops = stopsOf(nav)
   const options = choosing ? nav.options ?? [] : []
@@ -65,7 +66,14 @@ export function RoutePreview() {
         </button>
       </header>
 
-      {stops.length > 1 ? <StopsList stops={stops} busy={nav.status === 'routing'} /> : <AddStopButton count={1} />}
+      {stops.length > 1 ? (
+        <StopsList stops={stops} busy={nav.status === 'routing'} />
+      ) : (
+        <div className="route-preview__actions">
+          <AddStopButton count={1} />
+          <FavoriteButton place={nav.destination} favorite={favorites.some((f) => samePlace(f, nav.destination))} />
+        </div>
+      )}
 
       {nav.status === 'routing' && (
         <p className="route-preview__state" role="status">
@@ -144,4 +152,14 @@ function ArrivalMeta({ route }: { route: Route }) {
   }
   if (typeof route.kWh !== 'number') return null
   return <span>≈{route.kWh.toFixed(1)} kWh</span>
+}
+
+/** Saves the destination as a favorite, or removes it, right from the route choices. */
+function FavoriteButton({ place, favorite }: { place: Place; favorite: boolean }) {
+  return (
+    <button className="stops__add route-preview__fav" aria-pressed={favorite} onClick={() => useStore.getState().toggleFavorite(place)}>
+      <Star size={18} weight={favorite ? 'fill' : 'bold'} className={favorite ? 'is-fav' : undefined} aria-hidden />
+      {favorite ? 'Favorite' : 'Add to favorites'}
+    </button>
+  )
 }

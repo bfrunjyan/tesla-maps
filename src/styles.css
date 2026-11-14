@@ -1089,6 +1089,9 @@ h2, p { margin: 0; }
 :root[data-theme='dark'] .stops__add { color: #8fb0ff; }
 .stops__full { margin: 0; padding: 8px 12px; font-size: 12px; color: var(--text-faint); }
 .route-preview > .stops__add { margin: -6px 0 -4px -6px; }
+/* Add stop and Favorite side by side under the destination. */
+.route-preview__actions { display: flex; flex-wrap: wrap; gap: 2px; margin: -6px 0 -4px -6px; }
+.route-preview .route-preview__fav[aria-pressed='true'] { color: var(--text); }
 .route-preview__head { display: flex; align-items: flex-start; gap: 4px; padding-left: 6px; }
 .route-preview__titles { flex: 1; min-width: 0; padding-top: 10px; }
 .route-preview__label { font-size: 12px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
