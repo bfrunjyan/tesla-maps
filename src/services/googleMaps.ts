@@ -10,11 +10,14 @@ export function googleKey(): string | null {
 }
 
 /**
- * The Google map's look: a Map ID from the Google Cloud console with Mapic's light and
- * dark styles attached (google-map-styles/). Google's own default look until one is set.
+ * The Google map's look: the "Mapic ID" Map ID in the Google Cloud console, a vector
+ * JavaScript map with Google's Monochrome style for light mode and Google's Dark style
+ * for dark mode. A Map ID is not a secret; VITE_GOOGLE_MAP_ID can point at another one.
  */
+const MAPIC_MAP_ID = '2fe7d8736e3feaf45574c39f'
+
 export function googleMapId(): string {
-  return (import.meta.env.VITE_GOOGLE_MAP_ID as string | undefined) || 'DEMO_MAP_ID'
+  return (import.meta.env.VITE_GOOGLE_MAP_ID as string | undefined) || MAPIC_MAP_ID
 }
 
 /** Whether Mapic is using the Google map and Google routing now. */
