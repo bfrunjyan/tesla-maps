@@ -152,6 +152,14 @@ export async function categorySearch(kind: CategoryKind, near: { lon: number; la
   return withinKm(places, near, CATEGORY_RADIUS_KM[kind]).map((p) => ({ ...p, category: kind === 'hungry' ? 'food' : 'attraction' }))
 }
 
+/** Named car parks around a place, nearest first (OpenStreetMap through Photon: few of them are named). */
+export async function parkingNear(near: { lon: number; lat: number }, km = 1, signal?: AbortSignal): Promise<Place[]> {
+  const places = await photon({ include: 'osm.amenity.parking', lat: String(near.lat), lon: String(near.lon), limit: '10' }, withTimeout(signal, CATEGORY_TIMEOUT_MS), { named: true })
+  return withinKm(places, near, km)
+    .sort((a, b) => kmBetween(a, near) - kmBetween(b, near))
+    .map((p) => ({ ...p, category: 'poi' }))
+}
+
 /** Places no further than `km` from `near`. */
 export function withinKm(places: Place[], near: { lon: number; lat: number }, km: number): Place[] {
   return places.filter((p) => kmBetween(p, near) <= km)

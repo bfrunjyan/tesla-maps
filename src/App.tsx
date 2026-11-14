@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { ArrivalCard } from './components/ArrivalCard'
 import { ChargerBar } from './components/ChargerBar'
 import { CommuteCard } from './components/CommuteCard'
 import { GuidanceCard } from './components/GuidanceCard'
@@ -83,6 +84,7 @@ function MapApp() {
       <div className="scrim" data-visible={panelOpen} onClick={closePanel} aria-hidden />
       <div className="left-column">
         {nav && !addingStop ? <GuidanceCard /> : <SearchBox />}
+        {nav && !addingStop && <ArrivalCard />}
         {!nav && !panelOpen && selectedPlace && <PlaceCard />}
         {!nav && !panelOpen && !selectedPlace && <CommuteCard />}
       </div>

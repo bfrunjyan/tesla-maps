@@ -165,6 +165,14 @@ route whatever its direction (35 m plus GPS allowance), or driving the route bac
 Guidance continues on the old route until the new one arrives. A request that takes over
 12 s is dropped and tried again; at most one new route every 8 s.
 
+## Near the destination
+
+From 800 m before the destination (the last stop of a trip), a card under the directions
+lists up to three car parks and the nearest charger within 1.5 km, each one tap to go there
+instead (`src/components/ArrivalCard.tsx`). Car parks come from Google on the Google map
+(Places Nearby Search Pro, one billed request per destination: five within 260 m of
+Republic Square) and from OpenStreetMap otherwise, which names few of them in Armenia.
+
 ## Commute card
 
 Opened at Home with Work saved (or at Work with Home saved), within 400 m, Mapic shows "To

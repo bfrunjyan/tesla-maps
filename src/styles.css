@@ -305,6 +305,23 @@ h2, p { margin: 0; }
 .place-card__actions .btn--primary { flex: 1 1 100%; min-height: 46px; }
 .place-card__actions .btn:not(.btn--primary) { flex: 1 1 0; gap: 6px; padding: 0 8px; font-size: 13px; white-space: nowrap; }
 
+/* Near the destination: parking and the nearest charger. */
+.dest-near { display: flex; flex-direction: column; padding: 6px 6px 8px; }
+.dest-near__head { display: flex; align-items: center; gap: 4px; padding-left: 8px; }
+.dest-near__title { flex: 1; min-width: 0; margin: 0; font-size: 13px; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dest-near__close { width: 34px; height: 34px; color: var(--text-faint); }
+.dest-near__list { display: flex; flex-direction: column; }
+.dest-near__loading { padding: 8px; font-size: 13px; color: var(--text-faint); }
+.dest-near__row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 4px 8px; border-radius: var(--radius-sm); text-align: left; transition: background-color 120ms ease; }
+.dest-near__row:active { background: var(--surface-press); }
+.dest-near__icon { display: grid; place-items: center; width: 26px; height: 26px; flex: none; border-radius: 6px; color: #fff; font-size: 15px; font-weight: 800; }
+.dest-near__icon--parking { background: #2f6fd6; }
+.dest-near__icon--charger { background: #e82127; border-radius: 50%; }
+.dest-near__text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.dest-near__name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dest-near__sub { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dest-near__meta { flex: none; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
 /* Commute card: at Home or Work, the trip to the other one. */
 .commute { display: flex; align-items: center; padding: 4px 4px 4px 6px; }
 .commute__go { display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0; min-height: 56px; padding: 6px 8px; border-radius: var(--radius-sm); text-align: left; transition: background-color 140ms ease, transform 140ms var(--ease-out); }
