@@ -11,7 +11,7 @@ import { FALLBACK_CENTER, selectRoute } from '../nav/controller'
 import { sliceRoute } from '../nav/routeTraffic'
 import { stopLetter, stopsOf } from '../nav/stops'
 import { shownRoute } from '../nav/trafficSync'
-import { loadGoogleMaps } from '../services/googleMaps'
+import { googleMapId, loadGoogleMaps } from '../services/googleMaps'
 import { reverseGeocode } from '../services/search'
 import { useStore } from '../state/store'
 import type { Place, Position } from '../types'
@@ -82,7 +82,7 @@ async function start(container: HTMLDivElement): Promise<() => void> {
     zoom: 16.4,
     tilt: tiltFor(s0),
     heading: 0,
-    mapId: 'DEMO_MAP_ID',
+    mapId: googleMapId(),
     renderingType: RenderingType.VECTOR,
     colorScheme: s0.theme === 'dark' ? ColorScheme.DARK : ColorScheme.LIGHT,
     mapTypeId: s0.satellite ? 'hybrid' : 'roadmap',

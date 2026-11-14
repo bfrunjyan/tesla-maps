@@ -9,6 +9,14 @@ export function googleKey(): string | null {
   return (import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined) || null
 }
 
+/**
+ * The Google map's look: a Map ID from the Google Cloud console with Mapic's light and
+ * dark styles attached (google-map-styles/). Google's own default look until one is set.
+ */
+export function googleMapId(): string {
+  return (import.meta.env.VITE_GOOGLE_MAP_ID as string | undefined) || 'DEMO_MAP_ID'
+}
+
 /** Whether Mapic is using the Google map and Google routing now. */
 export function usingGoogle(s: { mapProvider: 'standard' | 'google' } = useStore.getState()) {
   return s.mapProvider === 'google' && !!googleKey()
