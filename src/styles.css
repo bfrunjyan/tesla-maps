@@ -945,6 +945,25 @@ h2, p { margin: 0; }
 .hist__metric { flex: 0 0 170px; background: var(--surface-raised); }
 .hist__metric .segmented__opt { min-height: 42px; font-variant-numeric: tabular-nums; }
 .hist__message { display: grid; place-content: center; justify-items: center; gap: 14px; height: 250px; text-align: center; color: var(--text-muted); }
+.hist__busiest { font-size: 13px; color: var(--text-muted); }
+.hist__total-extra { margin: 3px 0 0; font-size: 12.5px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.hist__price { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.hist__price-label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.hist__price-input {
+  width: 88px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.hist__price-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hist__price-unit { font-size: 13px; color: var(--text-muted); }
 .hist__note { max-width: 72ch; font-size: 13px; line-height: 1.5; color: var(--text-faint); }
 
 /* Column chart: one series, so no legend; the heading names it. Hairline grid,

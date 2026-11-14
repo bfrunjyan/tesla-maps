@@ -112,6 +112,7 @@ function History({ signedIn }: { signedIn: boolean }) {
   const meta = GRANULARITIES.find((x) => x.value === g)!
   const pick = selected != null ? period.buckets[selected] : null
   const totals = pick ?? sumTotals(period.buckets)
+  const busiest = busiestBucket(period.buckets)
   const isCurrent = period.buckets.some((b) => b.current)
   const nextAnchor = shiftAnchor(g, anchor, 1)
   const canGoForward = periodFor(g, nextAnchor, today).from <= today
@@ -147,10 +148,12 @@ function History({ signedIn }: { signedIn: boolean }) {
       <section className="hist__summary" aria-label="Totals" data-loading={state === 'loading' && days != null}>
         <div className="hist__scope">
           <span className="hist__scope-name">{pick ? pick.full : isCurrent ? meta.current : period.title}</span>
-          {pick && (
+          {pick ? (
             <button className="hist__link" onClick={() => setSelected(null)}>
               {meta.whole}
             </button>
+          ) : (
+            busiest && <span className="hist__busiest">Most driving: {busiest.label}, {km(busiest.metres)} km</span>
           )}
         </div>
         <Totals totals={totals} />
@@ -189,6 +192,8 @@ function History({ signedIn }: { signedIn: boolean }) {
         )}
       </section>
 
+      <PriceSetting />
+
       <p className="hist__note">
         Mapic records drives while it’s open on the car screen. Energy is an estimate {spec ? `for your ${spec.title}` : 'for a Model Y-class car'}, from
         distance, speed and hills.
@@ -197,12 +202,26 @@ function History({ signedIn }: { signedIn: boolean }) {
   )
 }
 
+/** The bucket with the most driving, when at least two have some (one alone isn't a highlight). */
+export function busiestBucket(buckets: Bucket[]): Bucket | null {
+  const driven = buckets.filter((b) => b.metres > 0)
+  if (driven.length < 2) return null
+  return driven.reduce((a, b) => (b.metres > a.metres ? b : a))
+}
+
+/** "≈ 1,240 ֏" for the energy at the driver's price, or null without a price. */
+export function costLabel(wh: number, price: number | null): string | null {
+  if (price == null || !(price > 0)) return null
+  return `≈ ${Math.round((wh / 1000) * price).toLocaleString('en-GB')} ֏`
+}
+
 function Totals({ totals }: { totals: Totals }) {
+  const price = useStore((s) => s.kwhPrice)
   const time = duration(totals.seconds)
   const avg = whPerKm(totals)
-  const items = [
+  const items: { label: string; value: string; unit: string; extra?: string | null }[] = [
     { label: 'Distance', value: km(totals.metres), unit: 'km' },
-    { label: 'Energy used', value: kWh(totals.wh), unit: 'kWh' },
+    { label: 'Energy used', value: kWh(totals.wh), unit: 'kWh', extra: costLabel(totals.wh, price) },
     { label: 'Driving time', value: time.value, unit: time.unit },
     { label: 'Average', value: avg != null ? String(Math.round(avg)) : '–', unit: avg != null ? 'Wh/km' : '' },
   ]
@@ -215,9 +234,36 @@ function Totals({ totals }: { totals: Totals }) {
             <span className="hist__total-value">{it.value}</span>
             {it.unit && <span className="hist__total-unit">{it.unit}</span>}
           </dd>
+          {it.extra && <dd className="hist__total-extra">{it.extra}</dd>}
         </div>
       ))}
     </dl>
+  )
+}
+
+/** The electricity price, for the cost of the energy used. Kept on this device. */
+function PriceSetting() {
+  const price = useStore((s) => s.kwhPrice)
+  const [text, setText] = useState(price != null ? String(price) : '')
+  const commit = () => {
+    const v = Number(text.replace(',', '.'))
+    useStore.getState().set({ kwhPrice: text.trim() && v > 0 && v < 10_000 ? Math.round(v * 100) / 100 : null })
+  }
+  return (
+    <label className="hist__price">
+      <span className="hist__price-label">Electricity price</span>
+      <input
+        className="hist__price-input"
+        inputMode="decimal"
+        placeholder="e.g. 48"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
+        aria-describedby="hist-price-unit"
+      />
+      <span id="hist-price-unit" className="hist__price-unit">֏ per kWh{price == null ? ' · shows the cost of each period' : ''}</span>
+    </label>
   )
 }
 

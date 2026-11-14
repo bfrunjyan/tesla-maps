@@ -58,6 +58,8 @@ interface State {
   googleChargers: Charger[]
   chargersState: 'idle' | 'loading' | 'ready' | 'error'
   chargerFilter: ChargerFilter
+  /** The driver's electricity price in ֏ per kWh, for the cost in driving history; null until set. */
+  kwhPrice: number | null
 
   /** The driver's car and its battery level (for charge at arrival). */
   vehicle: Vehicle | null
@@ -182,6 +184,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   googleChargers: [],
   chargersState: 'idle',
   chargerFilter: load<ChargerFilter>('chargerFilter', 'all'),
+  kwhPrice: load<number | null>('kwhPrice', null),
 
   vehicle: load<Vehicle | null>('vehicle', null),
   battery: load<Battery | null>('battery', null),
@@ -235,7 +238,7 @@ export const useStore = create<State & Actions>((set, get) => ({
 
   set: (patch) => {
     set(patch)
-    for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting', 'mapDetail', 'autoLite', 'chargerFilter', 'mapProvider'] as const) {
+    for (const key of ['northUp', 'threeD', 'showPois', 'satellite', 'showTraffic', 'themeSetting', 'mapDetail', 'autoLite', 'chargerFilter', 'mapProvider', 'kwhPrice'] as const) {
       if (key in patch) save(key, patch[key])
     }
   },
