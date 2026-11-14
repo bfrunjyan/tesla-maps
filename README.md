@@ -232,6 +232,12 @@ junctions without them are listed in `docs/lane-gaps.md` with edit links (refres
 asks the open server for the same trip at the same time (up to 4 s) and copies its lanes onto
 Google's turns at the same junction (within 40 m, turning the same way).
 
+## Back to the car
+
+During a trip, a map the driver moved goes back to following the car 5 seconds after the
+last touch (`src/nav/autoRecenter.ts`); any touch, drag, pinch or scroll starts the 5
+seconds again. Without a trip, or in the route preview, the map stays where it was put.
+
 ## Zoom while navigating
 
 During guidance the map zooms itself (`src/map/camera.ts`): a wider view between turns that

@@ -13,6 +13,7 @@ import { MapView } from './map/MapView'
 import { googleMapId, usingGoogle } from './services/googleMaps'
 import { initLocation, resumeTrip, toggleSimulation } from './nav/controller'
 import { rememberTrips, resumeIfInterrupted } from './nav/resume'
+import { startAutoRecenter } from './nav/autoRecenter'
 import { startInbox } from './nav/inbox'
 import { startSpeedLimits } from './nav/speedSync'
 import { startRouteTraffic } from './nav/trafficSync'
@@ -74,6 +75,7 @@ function MapApp() {
     resumeIfInterrupted(resumeTrip)
     startSpeedLimits()
     startInbox()
+    startAutoRecenter()
   }, [])
 
   return (
