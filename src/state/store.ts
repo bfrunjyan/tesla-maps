@@ -4,6 +4,7 @@ import { load, save } from '../lib/storage'
 import { api, type AuthMethods, type SavedPlaces, type User } from '../services/api'
 import type { RouteOption } from '../nav/routeOptions'
 import type { TrafficSpan } from '../nav/routeTraffic'
+import type { SpeedSpan } from '../nav/speedLimits'
 import type { ChargerFilter } from '../lib/chargers'
 import { clampPct } from '../nav/battery'
 import type { Battery, Charger, NavProgress, Place, Position, Route, TeslaLink, TeslaNote, Vehicle } from '../types'
@@ -76,6 +77,8 @@ interface State {
   trafficAllRoads: boolean
   /** Traffic along the route being shown (the chosen option, or the one being driven). */
   routeTraffic: { route: Route; spans: TrafficSpan[] } | null
+  /** Posted speed limits along the route being driven (see nav/speedLimits.ts). */
+  speedLimits: { route: Route; spans: SpeedSpan[] } | null
   themeSetting: ThemeSetting
   /** Map detail setting; 'auto' uses autoLite, detected per car. */
   mapDetail: MapDetail
@@ -191,6 +194,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   showTraffic: load('showTraffic', false),
   trafficAllRoads: false,
   routeTraffic: null,
+  speedLimits: null,
   themeSetting: load<ThemeSetting>('themeSetting', 'auto'),
   mapDetail: load<MapDetail>('mapDetail', 'auto'),
   autoLite: load('autoLite', false),

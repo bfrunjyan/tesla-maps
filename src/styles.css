@@ -518,6 +518,42 @@ h2, p { margin: 0; }
 }
 .scrim[data-visible='true'] { opacity: 1; pointer-events: auto; }
 
+/* Speed-limit sign and the car's speed, bottom left during guidance (above the map credits). */
+.speed {
+  position: absolute;
+  left: var(--gutter);
+  bottom: 40px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px 5px 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.speed__limit {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 5px solid #e82127;
+  border-radius: 50%;
+  background: #fff;
+  color: #111;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.speed__now { display: flex; align-items: baseline; gap: 3px; transition: color 160ms ease; }
+.speed__value { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.speed__unit { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.speed[data-over='true'] .speed__now,
+.speed[data-over='true'] .speed__unit { color: #e82127; }
+:root[data-theme='dark'] .speed[data-over='true'] .speed__now,
+:root[data-theme='dark'] .speed[data-over='true'] .speed__unit { color: #ff6b70; }
 .area-label {
   position: absolute;
   right: 18px;

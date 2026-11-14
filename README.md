@@ -165,6 +165,16 @@ route whatever its direction (35 m plus GPS allowance), or driving the route bac
 Guidance continues on the old route until the new one arrives. A request that takes over
 12 s is dropped and tried again; at most one new route every 8 s.
 
+## Speed limit
+
+During guidance, a speed-limit sign shows bottom left with the car's speed beside it, red
+when more than 3 km/h over (`src/nav/speedLimits.ts`, `src/components/SpeedSign.tsx`). The
+limits come from OpenStreetMap's `maxspeed`, read once per route (and after each reroute)
+by the open routing server's map matching along the route's own line, so it works for
+Google's routes too. Where a road has no limit in the map data, no sign shows: it never
+guesses. On test routes in Yerevan about 60% of the length had limits (main roads yes,
+side streets mostly not).
+
 ## Picking a trip back up
 
 If the page reloads mid-drive (the car's browser tab crashed, was reloaded, or came back
